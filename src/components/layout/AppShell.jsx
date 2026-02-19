@@ -2,9 +2,10 @@ import Box from "@mui/material/Box";
 import Navbar from "./Navbar";
 import HeroSection from "./HeroSection";
 import Footer from "./Footer";
-import TabContent from "./TabContent";
 
-export default function AppShell() {
+// ⚠️ CHANGED: now accepts `children` prop instead of rendering <TabContent /> directly.
+// To restore previous behaviour: remove `{ children }` param and replace `{children}` with `<TabContent />` (re-import TabContent too).
+export default function AppShell({ children }) {
   return (
     <Box
       sx={{
@@ -24,7 +25,7 @@ export default function AppShell() {
           py: 3,
         }}
       >
-        <TabContent />
+        {children}
       </Box>
       <Footer />
     </Box>

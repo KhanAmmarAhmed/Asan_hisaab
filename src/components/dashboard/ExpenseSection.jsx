@@ -55,8 +55,7 @@ function ExpenseCard({
   return (
     <Card
       sx={{
-        flex: "1 1 calc(50% - 8px)",
-        minWidth: 150,
+        flex: { xs: "1 1 100%", sm: "1 1 calc(50% - 8px)" },
         borderRadius: 0.5,
         position: "relative",
         overflow: "visible",
@@ -138,7 +137,13 @@ function ExpenseCard({
 
 export default function ExpenseSection() {
   return (
-    <Card sx={{ borderRadius: 1, flex: 1, minWidth: 300 }}>
+    <Card
+      sx={{
+        borderRadius: 1,
+        flex: { xs: "1 1 100%", md: 1 },
+        minWidth: 0,
+      }}
+    >
       <CardContent sx={{ p: 3 }}>
         <Typography
           variant="h6"
@@ -146,7 +151,14 @@ export default function ExpenseSection() {
         >
           Expense
         </Typography>
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 2,
+            width: "100%",
+          }}
+        >
           {expenseData.map((item) => (
             <ExpenseCard key={item.title} {...item} />
           ))}

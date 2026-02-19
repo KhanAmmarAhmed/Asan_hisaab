@@ -1,7 +1,190 @@
-import React from "react";
 
-const CustomersPage = () => {
-  return <div>hello customers page.</div>;
-};
 
-export default CustomersPage;
+import { useState } from "react";
+import Box from "@mui/material/Box";
+import { Button, Typography, TextField } from "@mui/material";
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { Add, FilterList } from "@mui/icons-material";
+import GenericTable from "@/components/generic/GenericTable";
+import GenericModal from "@/components/generic/GenericModal";
+import GenericSelectField from "@/components/generic/GenericSelectField";
+import GenericDateField from "@/components/generic/GenericDateField";
+import { useTheme, useMediaQuery, Collapse } from "@mui/material";
+
+
+const initialData = [
+  {
+    customerName: "Muhammad Usman",
+    phone: "03048973476",
+    email: "usman123@gmail.com",
+    address: "Rawalpindi",
+    date: "2024-01-10",
+  },
+  {
+    customerName: "Ehtesham Ali",
+    phone: "03157629450",
+    email: "ehteshamali@gmail.com",
+    address: "Mianwali",
+    date: "2024-01-15",
+  },
+];
+
+const tableColumns = [
+  { id: "customerName", label: "Customer Name", width: "25%" },
+  { id: "phone", label: "Phone Number", width: "25%" },
+  { id: "email", label: "Email", width: "25%" },
+  { id: "address", label: "Address", width: "25%" },
+];
+
+export default function CustomersPage() {
+  const [customers, setCustomers] = useState(initialData);
+  const [filteredData, setFilteredData] = useState(initialData);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const [searchName, setSearchName] = useState("");
+  const [searchEmail, setSearchEmail] = useState("");
+  const [searchDate, setSearchDate] = useState("");
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+
+  const handleSearch = () => {
+    const filtered = customers.filter((customer) => {
+      return (
+        (searchName === "" ||
+          customer.customerName
+            .toLowerCase()
+            .includes(searchName.toLowerCase())) &&
+        (searchEmail === "" ||
+          customer.email
+            .toLowerCase()
+            .includes(searchEmail.toLowerCase())) &&
+        (searchDate === "" || customer.date === searchDate)
+      );
+    });
+
+    setFilteredData(filtered);
+  };
+
+  const handleCreateCustomer = (formData) => {
+    const newEntry = {
+      customerName: formData.customerName || "",
+      phone: formData.phone || "",
+      email: formData.email || "",
+      address: formData.address || "",
+      date: new Date().toISOString().split("T")[0],
+    };
+
+    const updated = [newEntry, ...customers];
+    setCustomers(updated);
+    setFilteredData(updated);
+    setIsModalOpen(false);
+  };
+
+  return (
+    <Box className="space-y-4">
+      <Typography variant="h5" sx={{ fontWeight: 600 }}>
+        Create/Customers
+      </Typography>
+
+      {/* Top Buttons */}
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+        <Button
+          variant="contained"
+          startIcon={<FilterList />}
+          onClick={() => setShowFilters((prev) => !prev)}
+        >
+          {showFilters ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+        </Button>
+
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => setIsModalOpen(true)}
+          sx={{
+            backgroundColor: "#1B0D3F",
+            "&:hover": { backgroundColor: "#2D1B69" },
+          }}
+        >
+          Add
+        </Button>
+      </Box>
+
+      {/* 👇 Filters appear ONLY when button clicked */}
+
+      <Collapse in={showFilters}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "1fr 1fr",
+              md: "1fr 1fr 1fr 0.5fr",
+            },
+            gap: 2,
+            width: "100%",
+            mt: 2,
+            p: isMobile ? 2 : 0,
+            backgroundColor: isMobile ? "#f9f9f9" : "transparent",
+            borderRadius: isMobile ? 1 : 0,
+          }}
+        >
+          <GenericSelectField
+            label="Customer Name"
+            value={searchName}
+            onChange={(e) => setSearchName(e.target.value)}
+            options={[...new Set(customers.map((c) => c.customerName))]}
+          />
+
+          <GenericSelectField
+            label="Email Address"
+            value={searchEmail}
+            onChange={(e) => setSearchEmail(e.target.value)}
+            options={[...new Set(customers.map((c) => c.email))]}
+          />
+
+          <GenericDateField
+            value={searchDate}
+            onChange={(e) => setSearchDate(e.target.value)}
+          />
+
+          <Button
+            variant="contained"
+            onClick={handleSearch}
+            sx={{
+              borderRadius: 0.5,
+              backgroundColor: "#1B0D3F",
+              "&:hover": { backgroundColor: "#2D1B69" },
+            }}
+          >
+            Search
+          </Button>
+        </Box>
+      </Collapse>
+
+
+      <GenericTable
+        columns={tableColumns}
+        data={filteredData}
+        emptyMessage="No Customers found"
+      />
+
+      <GenericModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        title="Create Customer"
+        mode="form"
+        columns={2}
+        onSubmit={handleCreateCustomer}
+        fields={[
+          { id: "customerName", label: "Customer Name" },
+          { id: "phone", label: "Phone Number" },
+          { id: "email", label: "Email" },
+          { id: "address", label: "Address" },
+        ]}
+      />
+    </Box>
+  );
+}

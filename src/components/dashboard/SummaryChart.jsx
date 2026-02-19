@@ -39,7 +39,14 @@ export default function SummaryChart() {
   };
 
   return (
-    <Card sx={{ borderRadius: 1, flex: 1, minWidth: 300 }}>
+    // <Card sx={{ borderRadius: 1, flex: 1, minWidth: 300 }}>
+    <Card
+      sx={{
+        borderRadius: 1,
+        flex: { xs: "1 1 100%", md: 1 },
+        minWidth: 0,
+      }}
+    >
       <CardContent sx={{ p: 2.5 }}>
         <Box
           sx={{

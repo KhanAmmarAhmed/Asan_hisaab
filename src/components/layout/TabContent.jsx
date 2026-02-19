@@ -1,4 +1,4 @@
-import React from "react";
+
 import { useTab } from "@/context/TabContext";
 import DashboardPage from "@/components/dashboard/DashboardPage";
 import IncomePage from "@/components/income/IncomePage";
@@ -7,13 +7,6 @@ import ExpensePage from "@/components/expense/ExpensePage";
 import InvoicesPage from "@/components/invoices/InvoicesPage";
 import CashbookPage from "@/components/cashbook/CashbookPage";
 
-const pageConfig = {
-  report: {
-    title: "Reports",
-    description:
-      "Generate comprehensive financial reports. Analyze your income, expenses, and overall business performance.",
-  },
-};
 
 export default function TabContent() {
   const { activeTab } = useTab();
@@ -32,6 +25,9 @@ export default function TabContent() {
     return <InvoicesPage />;
   }
   if (activeTab === "cashbook") {
+    return <CashbookPage />;
+  }
+  if (activeTab === "report") {
     return <CashbookPage />;
   }
 

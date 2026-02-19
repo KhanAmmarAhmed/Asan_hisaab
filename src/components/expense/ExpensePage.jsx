@@ -1,10 +1,14 @@
 import { useState } from "react";
 import Box from "@mui/material/Box";
-import { Button } from "@mui/material";
-import { Add } from "@mui/icons-material";
+import { useMemo } from "react";
+import { Button, Collapse, useTheme, useMediaQuery } from "@mui/material";
+import { Add, FilterList } from "@mui/icons-material";
 import GenericTable from "@/components/generic/GenericTable";
-import GenericFilterButton from "@/components/generic/GenericFilterButton";
 import GenericModal from "@/components/generic/GenericModal";
+import GenericSelectField from "@/components/generic/GenericSelectField";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import GenericDateField from "@/components/generic/GenericDateField";
 
 const initialData = [
   {
@@ -18,8 +22,8 @@ const initialData = [
   },
   {
     voucher: "02",
-    customerName: "Mr. Adnan Tariq",
-    accountHead: "Habib Ullah",
+    customerName: "Ammar Khan",
+    accountHead: "Expence Account",
     paymentMethod: "Cash",
     date: "3/24/2023",
     status: "Invoiced",
@@ -37,16 +41,16 @@ const tableColumns = [
   { id: "amount", label: "Amount", width: "14%" },
 ];
 
-const filterOptions = ["All", "Invoiced", "Paid", "Pending", "Overdue"];
 const ExpensePage = () => {
-  const [selectedFilter, setSelectedFilter] = useState("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [incomeData, setIncomeData] = useState(initialData);
+  const [showFilters, setShowFilters] = useState(false);
+  const [customerName, setCustomerName] = useState("");
+  const [accountHead, setAccountHead] = useState("");
+  const [searchDate, setSearchDate] = useState("");
 
-  const filteredData =
-    selectedFilter === "All"
-      ? incomeData
-      : incomeData.filter((row) => row.status === selectedFilter);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const handleAddIncome = (formData) => {
     const newVoucher = String(incomeData.length + 1).padStart(2, "0");
@@ -63,15 +67,32 @@ const ExpensePage = () => {
 
     setIncomeData((prev) => [newEntry, ...prev]);
   };
+  const filteredData = useMemo(() => {
+    return incomeData.filter((item) => {
+      return (
+        (customerName === "" ||
+          (item.customerName || "")
+            .toLowerCase()
+            .includes(customerName.toLowerCase())) &&
+        (accountHead === "" ||
+          (item.accountHead || "")
+            .toLowerCase()
+            .includes(accountHead.toLowerCase())) &&
+        (searchDate === "" ||
+          new Date(item.date).toISOString().split("T")[0] === searchDate)
+      );
+    });
+  }, [incomeData, customerName, accountHead, searchDate]);
   return (
     <Box className="space-y-4">
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-        <GenericFilterButton
-          options={filterOptions}
-          selectedOption={selectedFilter}
-          onOptionChange={setSelectedFilter}
-          label="Filter"
-        />
+        <Button
+          variant="contained"
+          startIcon={<FilterList />}
+          onClick={() => setShowFilters((prev) => !prev)}
+        >
+          {showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        </Button>
         <Button
           variant="contained"
           startIcon={<Add />}
@@ -88,6 +109,59 @@ const ExpensePage = () => {
           Add
         </Button>
       </Box>
+      <Collapse in={showFilters}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            width: "100%",
+            mt: 2,
+            p: isMobile ? 2 : 0,
+            backgroundColor: isMobile ? "#f9f9f9" : "transparent",
+            borderRadius: isMobile ? 1 : 0,
+          }}
+        >
+          <GenericSelectField
+            label="Customer Name"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            options={[
+              ...new Set(incomeData.map((item) => item.customerName)),
+            ].map((name) => ({
+              label: name,
+              value: name,
+            }))}
+          />
+          <GenericSelectField
+            label="Account Head"
+            value={accountHead}
+            onChange={(e) => setAccountHead(e.target.value)}
+            options={[
+              ...new Set(incomeData.map((item) => item.accountHead)),
+            ].map((name) => ({
+              label: name,
+              value: name,
+            }))}
+          />
+          <GenericDateField
+            value={searchDate}
+            onChange={(valOrEvent) =>
+              setSearchDate(valOrEvent?.target?.value ?? valOrEvent ?? "")
+            }
+          />
+
+          <Button
+            variant="contained"
+            sx={{
+              borderRadius: 0.5,
+              backgroundColor: "#1B0D3F",
+              "&:hover": { backgroundColor: "#2D1B69" },
+            }}
+          >
+            Search
+          </Button>
+        </Box>
+      </Collapse>
 
       <GenericTable
         columns={tableColumns}
@@ -98,7 +172,7 @@ const ExpensePage = () => {
       <GenericModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        title="Income Detail"
+        title="Expense Detail"
         mode="form"
         columns={2}
         showAddFileButton

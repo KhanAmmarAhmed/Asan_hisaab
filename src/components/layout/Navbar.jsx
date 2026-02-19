@@ -9,11 +9,20 @@ import MenuItem from "@mui/material/MenuItem";
 import AddIcon from "@mui/icons-material/Add";
 import SettingsIcon from "@mui/icons-material/Settings";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { Link } from "react-router-dom";
+// ⚠️ CHANGED: replaced `import { Link }` with `useNavigate` for proper MenuItem styling.
+// To restore: re-import { Link } from "react-router-dom" and wrap each MenuItem text in <Link to="...">
+import { useNavigate } from "react-router-dom";
 
 export default function Navbar() {
   const [createAnchor, setCreateAnchor] = useState(null);
   const [setupAnchor, setSetupAnchor] = useState(null);
+  const navigate = useNavigate();
+
+  // ⚠️ CHANGED: helper closes menu then navigates — replaces old <Link> inside MenuItem
+  const handleCreate = (path) => {
+    setCreateAnchor(null);
+    navigate(path);
+  };
 
   return (
     <AppBar
@@ -31,7 +40,7 @@ export default function Navbar() {
           minHeight: { xs: 52, sm: 56 },
         }}
       >
-        <Typography
+        <Box
           variant="h6"
           component="div"
           sx={{
@@ -39,88 +48,132 @@ export default function Navbar() {
             fontSize: { xs: "1rem", sm: "1.2rem" },
             letterSpacing: 0.5,
             color: "#FFFFFF",
+            // display: { xs: "none", md: "inline" },
           }}
         >
-          Friends It Solutions
-        </Typography>
-
+          <Box
+            sx={{
+              display: { xs: "inline", md: "none" },
+              fontWeight: 900,
+              fontSize: "2rem",
+            }}
+          >
+            FIS
+          </Box>
+          <Box sx={{ display: { xs: "none", md: "inline" } }}>
+            Friends It Solutions
+          </Box>
+        </Box>
         <Box
           sx={{
             position: "absolute",
             right: 16,
             display: "flex",
             alignItems: "center",
+            float: "right",
             gap: 1,
           }}
         >
+          {/* ── "+ Create" dropdown ── */}
           <Button
             color="inherit"
             startIcon={<AddIcon sx={{ fontSize: 18 }} />}
-            endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 16 }} />}
+            endIcon={
+              <KeyboardArrowDownIcon
+                sx={{
+                  fontSize: 16,
+                  display: { xs: "none", md: "inline-flex" }, // hide arrow on mobile
+                }}
+              />
+            }
             onClick={(e) => setCreateAnchor(e.currentTarget)}
             sx={{
               fontSize: "0.85rem",
               color: "#FFFFFF",
               textTransform: "none",
+              minWidth: "auto",
+              px: { xs: 1, md: 2 },
             }}
           >
-            Create
+            <Box sx={{ display: { xs: "none", md: "inline" } }}>Create</Box>
           </Button>
+
           <Menu
             anchorEl={createAnchor}
             open={Boolean(createAnchor)}
             onClose={() => setCreateAnchor(null)}
-            sx={{}}
           >
             <MenuItem
               sx={{ fontWeight: 600 }}
-              onClick={() => setCreateAnchor(null)}
+              onClick={() => handleCreate("/projects")}
             >
-              <Link to="/projects">Projects</Link>
+              Projects
             </MenuItem>
             <MenuItem
               sx={{ fontWeight: 600 }}
-              onClick={() => setCreateAnchor(null)}
+              onClick={() => handleCreate("/customers")}
             >
-              <Link to="/customers">Customers</Link>
+              Customers
             </MenuItem>
             <MenuItem
               sx={{ fontWeight: 600 }}
-              onClick={() => setCreateAnchor(null)}
+              onClick={() => handleCreate("/vendors")}
             >
-              <Link to="/vendors">Vendors</Link>
+              Vendors
             </MenuItem>
             <MenuItem
               sx={{ fontWeight: 600 }}
-              onClick={() => setCreateAnchor(null)}
+              onClick={() => handleCreate("/employees")}
             >
-              <Link to="/employees">Employees</Link>
+              Employees
             </MenuItem>
           </Menu>
 
+          {/* ── "Setup" dropdown ── */}
           <Button
             color="inherit"
             startIcon={<SettingsIcon sx={{ fontSize: 18 }} />}
-            endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 16 }} />}
+            endIcon={
+              <KeyboardArrowDownIcon
+                sx={{
+                  fontSize: 16,
+                  display: { xs: "none", md: "inline-flex" },
+                }}
+              />
+            }
             onClick={(e) => setSetupAnchor(e.currentTarget)}
             sx={{
               fontSize: "0.85rem",
               color: "#FFFFFF",
               textTransform: "none",
+              minWidth: "auto",
+              px: { xs: 1, md: 2 },
             }}
           >
-            Setup
+            <Box sx={{ display: { xs: "none", md: "inline" } }}>Setup</Box>
           </Button>
+
           <Menu
             anchorEl={setupAnchor}
             open={Boolean(setupAnchor)}
             onClose={() => setSetupAnchor(null)}
           >
-            <MenuItem onClick={() => setSetupAnchor(null)}>
+            <MenuItem
+              sx={{ fontWeight: 600 }}
+              onClick={() => setSetupAnchor(null)}
+            >
               Company Settings
             </MenuItem>
-            <MenuItem onClick={() => setSetupAnchor(null)}>Categories</MenuItem>
-            <MenuItem onClick={() => setSetupAnchor(null)}>
+            <MenuItem
+              sx={{ fontWeight: 600 }}
+              onClick={() => setSetupAnchor(null)}
+            >
+              Categories
+            </MenuItem>
+            <MenuItem
+              sx={{ fontWeight: 600 }}
+              onClick={() => setSetupAnchor(null)}
+            >
               Payment Methods
             </MenuItem>
           </Menu>
