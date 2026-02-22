@@ -178,7 +178,7 @@ export default function VendersPage() {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         title="Create Vender"
-        mode="form"
+        mode="add"
         columns={2}
         onSubmit={handleCreateCustomer}
         fields={[

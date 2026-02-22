@@ -4,14 +4,17 @@ import {
     Typography,
     Paper,
     Avatar,
+    Button,
 } from "@mui/material";
+import { Add } from "@mui/icons-material";
 import GenericDateField from "../../generic/GenericDateField";
+import GenericModal from "../../generic/GenericModal";
 
 const PURPLE = "#2E266D";
 
 export default function CashInOutPage() {
     // 🔹 Sample Data (Replace with API later)
-    const [transactions] = useState([
+    const [transactions, setTransactions] = useState([
         {
             id: 1,
             bankName: "Meezan Bank",
@@ -30,6 +33,9 @@ export default function CashInOutPage() {
 
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedRow, setSelectedRow] = useState(null);
+    const [modalMode, setModalMode] = useState("add");
 
     // 🔹 Filter by Date
     const filteredTransactions = useMemo(() => {
@@ -44,12 +50,45 @@ export default function CashInOutPage() {
         return d.toLocaleDateString("en-GB");
     };
 
+    const handleAddTransaction = (formData) => {
+        const newTransaction = {
+            id: transactions.length + 1,
+            bankName: formData.bankName || "Unknown Bank",
+            amount: formData.amount || 0,
+            type: formData.type || "in",
+            date: new Date().toISOString().split("T")[0],
+            description: formData.description || "",
+        };
+        setTransactions([newTransaction, ...transactions]);
+    };
+
     return (
         <Box>
             {/* Header */}
-            <Typography variant="h5" fontWeight={600} mb={2}>
-                Cash In/Out
-            </Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography variant="h5" fontWeight={600}>
+                    Cash In/Out
+                </Typography>
+                <Button
+                    variant="contained"
+                    startIcon={<Add />}
+                    onClick={() => {
+                        setModalMode("add");
+                        setSelectedRow(null);
+                        setIsModalOpen(true);
+                    }}
+                    sx={{
+                        backgroundColor: "#1B0D3F",
+                        color: "#FFFFFF",
+                        fontWeight: 600,
+                        fontSize: 14,
+                        px: 2.5,
+                        "&:hover": { backgroundColor: "#2D1B69" },
+                    }}
+                >
+                    Add
+                </Button>
+            </Box>
 
             {/* Date Filters */}
             <Box display="flex" gap={2} mb={2} width="40%">
@@ -89,6 +128,15 @@ export default function CashInOutPage() {
                     <Paper
                         key={item.id}
                         elevation={0}
+                        onClick={() => {
+                            setSelectedRow({
+                                ...item,
+                                voucher: String(item.id),
+                                amount: `Rs. ${Number(item.amount).toLocaleString()}`
+                            });
+                            setModalMode("detail-actions");
+                            setIsModalOpen(true);
+                        }}
                         sx={{
                             p: 1,
                             mb: 1,
@@ -97,6 +145,8 @@ export default function CashInOutPage() {
                             alignItems: "center",
                             justifyContent: "space-between",
                             backgroundColor: "#FFFFFF",
+                            cursor: "pointer",
+                            "&:hover": { backgroundColor: "#F5F5F5" },
                         }}
                     >
                         {/* Left Side */}
@@ -132,7 +182,7 @@ export default function CashInOutPage() {
                                         : "red"
                                 }
                             >
-                                Rs. {item.amount.toLocaleString()}/-
+                                Rs. {Number(item.amount).toLocaleString()}/-
                             </Typography>
 
                             <Typography
@@ -146,6 +196,38 @@ export default function CashInOutPage() {
                     </Paper>
                 ))
             )}
+
+            <GenericModal
+                open={isModalOpen}
+                onOpenChange={setIsModalOpen}
+                title={modalMode === "add" ? "Add Transaction" : "Transaction Detail"}
+                mode={modalMode}
+                columns={2}
+                showAddFileButton={modalMode === "add"}
+                selectedRow={selectedRow}
+                onSubmit={handleAddTransaction}
+                fields={
+                    modalMode === "add"
+                        ? [
+                            { id: "bankName", label: "Bank Name" },
+                            { id: "amount", label: "Amount" },
+                            { id: "type", label: "Type (in/out)" },
+                            { id: "date", label: "Date" }, // Optional in form if auto-set
+                            { id: "description", label: "Description", type: "textarea", rows: 2 },
+                        ]
+                        : [
+                            { id: "bankName", label: "Bank Name" },
+                            { id: "amount", label: "Amount" },
+                            { id: "type", label: "Type" },
+                            { id: "date", label: "Date" },
+                            { id: "description", label: "Description" },
+                        ]
+                }
+                onPrint={() => window.print()}
+                onShare={() => console.log("Share clicked")}
+                onSave={() => console.log("Save clicked")}
+                onEdit={() => console.log("Edit clicked")}
+            />
         </Box>
     );
 }

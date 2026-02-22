@@ -48,6 +48,8 @@ const ExpensePage = () => {
   const [customerName, setCustomerName] = useState("");
   const [accountHead, setAccountHead] = useState("");
   const [searchDate, setSearchDate] = useState("");
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [modalMode, setModalMode] = useState("add");
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -83,6 +85,13 @@ const ExpensePage = () => {
       );
     });
   }, [incomeData, customerName, accountHead, searchDate]);
+
+  const handleRowClick = (row) => {
+    setSelectedRow(row);
+    setModalMode("detail-actions");
+    setIsModalOpen(true);
+  };
+
   return (
     <Box className="space-y-4">
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
@@ -96,7 +105,11 @@ const ExpensePage = () => {
         <Button
           variant="contained"
           startIcon={<Add />}
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setModalMode("add");
+            setSelectedRow(null);
+            setIsModalOpen(true);
+          }}
           sx={{
             backgroundColor: "#1B0D3F",
             color: "#FFFFFF",
@@ -167,28 +180,43 @@ const ExpensePage = () => {
         columns={tableColumns}
         data={filteredData}
         emptyMessage="No income entries found"
+        onRowClick={handleRowClick}
       />
 
       <GenericModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        title="Expense Detail"
-        mode="form"
+        title={modalMode === "add" ? "Add Expense Detail" : "Expense Detail"}
+        mode={modalMode}
         columns={2}
-        showAddFileButton
+        showAddFileButton={modalMode === "add"}
+        selectedRow={selectedRow}
         onSubmit={handleAddIncome} // ✅ ADD THIS
-        fields={[
-          { id: "customerName", label: "Customer Name" },
-          { id: "accountHead", label: "Account Head" },
-          { id: "paymentMethod", label: "Payment Method" },
-          { id: "amount", label: "Amount" },
-          {
-            id: "description",
-            label: "Description",
-            type: "textarea",
-            rows: 4,
-          },
-        ]}
+        fields={
+          modalMode === "add"
+            ? [
+              { id: "customerName", label: "Customer Name" },
+              { id: "accountHead", label: "Account Head" },
+              { id: "paymentMethod", label: "Payment Method" },
+              { id: "amount", label: "Amount" },
+              {
+                id: "description",
+                label: "Description",
+                type: "textarea",
+                rows: 4,
+              },
+            ]
+            : [
+              { id: "customerName", label: "Customer Name" },
+              { id: "accountHead", label: "Account Head" },
+              { id: "paymentMethod", label: "Payment Method" },
+              { id: "date", label: "Date" },
+            ]
+        }
+        onPrint={() => window.print()}
+        onShare={() => console.log("Share clicked")}
+        onSave={() => console.log("Save clicked")}
+        onEdit={() => console.log("Edit clicked")}
       />
     </Box>
   );

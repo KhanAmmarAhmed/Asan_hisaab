@@ -15,6 +15,7 @@ export default function GenericTable({
   columns,
   data,
   emptyMessage = "No data found",
+  onRowClick,
 }) {
   const [page, setPage] = useState(0);
   const rowsPerPage = 10;
@@ -57,7 +58,12 @@ export default function GenericTable({
 
           <TableBody>
             {paginatedData.map((row, index) => (
-              <TableRow key={index}>
+              <TableRow
+                key={index}
+                hover
+                onClick={() => onRowClick && onRowClick(row)}
+                sx={{ cursor: onRowClick ? "pointer" : "default" }}
+              >
                 {columns.map((col) => (
                   <TableCell key={col.id}>{row[col.id]}</TableCell>
                 ))}

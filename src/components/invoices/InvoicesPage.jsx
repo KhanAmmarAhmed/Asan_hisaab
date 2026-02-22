@@ -1,3 +1,5 @@
+
+
 import { useState } from "react";
 import Box from "@mui/material/Box";
 import { useMemo } from "react";
@@ -14,6 +16,7 @@ import GenericFilterButton from "@/components/generic/GenericFilterButton";
 import GenericModal from "@/components/generic/GenericModal";
 import BalanceCards from "@/components/dashboard/BalanceCards";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import ReceiptIcon from "@mui/icons-material/Receipt";
 import GenericSelectField from "@/components/generic/GenericSelectField";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -42,14 +45,14 @@ const initialData = [
     reference: "Ref-67890",
     taxAble: "No",
     madeBy: "Admin",
-    status: "unPaid",
+    status: "Pending",
   },
 ];
 
 const tableColumns = [
   { id: "voucher", label: "Voucher#", width: "5%" },
   { id: "type", label: "Type", width: "10%" },
-  { id: "ammount", label: "Ammount", width: "13%" },
+  { id: "ammount", label: "Amount", width: "13%" },
   { id: "entityType", label: "Entity Type", width: "10%" },
   { id: "entity", label: "Entity", width: "10%" },
   { id: "date", label: "Date", width: "10%" },
@@ -62,7 +65,6 @@ const tableColumns = [
 const statusOptions = ["All", "Invoiced", "Paid", "Pending"];
 
 export default function InvoicesPage() {
-  const [selectedFilter, setSelectedFilter] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [invoiceData, setInvoiceData] = useState(initialData);
@@ -72,16 +74,17 @@ export default function InvoicesPage() {
   const [type, setType] = useState("");
   const [entityType, setEntityType] = useState("");
   const [searchDate, setSearchDate] = useState("");
+  const [modalMode, setModalMode] = useState("add"); // "add" | "selection" | "detail-actions"
+  const [selectedType, setSelectedType] = useState(""); // Store selected type from Green/Red buttons
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const handleAddInvoices = (formData) => {
     const newVoucher = String(invoiceData.length + 1).padStart(2, "0");
-
     const newEntry = {
       voucher: newVoucher,
-      type: formData.type || "",
+      type: selectedType || formData.type || "",
       ammount: formData.ammount || "",
       entityType: formData.entityType || "",
       entity: formData.entity || "",
@@ -89,39 +92,50 @@ export default function InvoicesPage() {
       reference: formData.reference || "",
       taxAble: formData.taxAble || "",
       madeBy: formData.madeBy || "",
-      action: (
-        <IconButton
-          onClick={() => {
-            setSelectedRow(newEntry);
-            setIsModalOpen(true);
-            console.log("View details for:", newEntry);
-          }}
-        >
-          <VisibilityIcon />
-        </IconButton>
-      ),
+      status: "Pending",
     };
-
     setInvoiceData((prev) => [newEntry, ...prev]);
   };
+
+  const handleTypeSelect = (type) => {
+    setSelectedType(type);
+    setModalMode("add");
+  };
+
   const filteredData = useMemo(() => {
-    return invoiceData.filter((item) => {
-      return (
-        (selectedStatus === "All" || item.status === selectedStatus) &&
-        (reference === "" ||
-          (item.reference || "")
-            .toLowerCase()
-            .includes(reference.toLowerCase())) &&
-        (type === "" ||
-          (item.type || "").toLowerCase().includes(type.toLowerCase())) &&
-        (entityType === "" ||
-          (item.entityType || "")
-            .toLowerCase()
-            .includes(entityType.toLowerCase())) &&
-        (searchDate === "" ||
-          new Date(item.date).toISOString().split("T")[0] === searchDate)
-      );
-    });
+    return invoiceData
+      .filter((item) => {
+        return (
+          (selectedStatus === "All" || item.status === selectedStatus) &&
+          (reference === "" ||
+            item.reference?.toLowerCase().includes(reference.toLowerCase())) &&
+          (type === "" ||
+            item.type?.toLowerCase().includes(type.toLowerCase())) &&
+          (entityType === "" ||
+            item.entityType
+              ?.toLowerCase()
+              .includes(entityType.toLowerCase())) &&
+          (searchDate === "" ||
+            new Date(item.date).toISOString().split("T")[0] === searchDate)
+        );
+      })
+      .map((item) => ({
+        ...item,
+        action: (
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedRow(item);
+              setModalMode("detail-actions");
+              setIsModalOpen(true);
+            }}
+            size="small"
+            title="View Details"
+          >
+            <VisibilityIcon fontSize="small" />
+          </IconButton>
+        ),
+      }));
   }, [invoiceData, selectedStatus, reference, type, entityType, searchDate]);
 
   return (
@@ -130,7 +144,9 @@ export default function InvoicesPage() {
         <BalanceCards title="Paid Amount" amount="Rs. 50,000" />
         <BalanceCards title="Pending Amount" amount="Rs. 25,000" />
       </Box>
+
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+
         <Button
           variant="contained"
           startIcon={<FilterList />}
@@ -138,26 +154,35 @@ export default function InvoicesPage() {
         >
           {showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </Button>
+
         <Button
           variant="contained"
           startIcon={<Add />}
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setModalMode("selection");
+            setSelectedRow(null);
+            setIsModalOpen(true);
+          }}
           sx={{
-            backgroundColor: "#1B0D3F",
+            bgcolor: "#1B0D3F",
             color: "#FFFFFF",
             fontWeight: 600,
-            fontSize: 14,
-            px: 2.5,
-            "&:hover": { backgroundColor: "#2D1B69" },
+            "&:hover": { bgcolor: "#2D1B69" },
           }}
         >
-          Add
+          Add Invoice
         </Button>
       </Box>
+
       <Collapse in={showFilters}>
         <Box
           sx={{
-            display: "flex",
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "1fr 1fr",
+              md: "0.5fr 0.5fr 0.5fr 0.5fr 0.5fr",
+            },
             gap: 2,
             width: "100%",
             mt: 2,
@@ -171,10 +196,7 @@ export default function InvoicesPage() {
             value={reference}
             onChange={(e) => setReference(e.target.value)}
             options={[...new Set(invoiceData.map((i) => i.reference))].map(
-              (val) => ({
-                label: val,
-                value: val,
-              }),
+              (val) => ({ label: val, value: val }),
             )}
           />
           <GenericSelectField
@@ -182,22 +204,15 @@ export default function InvoicesPage() {
             value={type}
             onChange={(e) => setType(e.target.value)}
             options={[...new Set(invoiceData.map((i) => i.type))].map(
-              (val) => ({
-                label: val,
-                value: val,
-              }),
+              (val) => ({ label: val, value: val }),
             )}
           />
-
           <GenericSelectField
             label="Entity Type"
             value={entityType}
             onChange={(e) => setEntityType(e.target.value)}
             options={[...new Set(invoiceData.map((i) => i.entityType))].map(
-              (val) => ({
-                label: val,
-                value: val,
-              }),
+              (val) => ({ label: val, value: val }),
             )}
           />
           <GenericDateField
@@ -206,19 +221,15 @@ export default function InvoicesPage() {
               setSearchDate(valOrEvent?.target?.value ?? valOrEvent ?? "")
             }
           />
-
           <Button
             variant="contained"
-            sx={{
-              borderRadius: 0.5,
-              backgroundColor: "#1B0D3F",
-              "&:hover": { backgroundColor: "#2D1B69" },
-            }}
+            sx={{ bgcolor: "#1B0D3F", "&:hover": { bgcolor: "#2D1B69" } }}
           >
             Search
           </Button>
         </Box>
       </Collapse>
+
       <Box>
         <GenericFilterButton
           options={statusOptions}
@@ -227,29 +238,45 @@ export default function InvoicesPage() {
           label="Status"
         />
       </Box>
+
       <GenericTable
         columns={tableColumns}
         data={filteredData}
         emptyMessage="No income entries found"
+        onRowClick={(row) => {
+          setSelectedRow(row);
+          setModalMode("transaction-detail-actions");
+          setIsModalOpen(true);
+        }}
       />
+
       <GenericModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        title="Invoice Detail"
-        mode="form"
-        columns={2}
-        showAddFileButton
-        onSubmit={handleAddInvoices} // ✅ ADD THIS
+        title={
+          modalMode === "selection"
+            ? "Select Invoice Type"
+            : modalMode === "add"
+              ? `Add ${selectedType || "Invoice"}`
+              : "Transaction Detail"
+        }
+        mode={modalMode}
         fields={[
           { id: "type", label: "Type" },
-          { id: "ammount", label: "Ammount" },
+          { id: "ammount", label: "Amount" },
           { id: "entityType", label: "Entity Type" },
           { id: "entity", label: "Entity" },
-          { id: "date", label: "Date" },
           { id: "reference", label: "Reference" },
           { id: "taxAble", label: "Taxable" },
           { id: "madeBy", label: "Made By" },
         ]}
+        selectedRow={selectedRow}
+        onSubmit={modalMode === "selection" ? handleTypeSelect : handleAddInvoices}
+        submitButtonLabel="Save Invoice"
+        onPrint={() => window.print()}
+        onShare={() => console.log("Share clicked")}
+        onSave={() => console.log("Save clicked")}
+        onEdit={() => console.log("Edit clicked")}
       />
     </Box>
   );

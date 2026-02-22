@@ -1,8 +1,6 @@
-
-
 import { useState } from "react";
 import Box from "@mui/material/Box";
-import { Button, Typography, TextField } from "@mui/material";
+import { Button, Typography } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { Add, FilterList } from "@mui/icons-material";
@@ -11,7 +9,6 @@ import GenericModal from "@/components/generic/GenericModal";
 import GenericSelectField from "@/components/generic/GenericSelectField";
 import GenericDateField from "@/components/generic/GenericDateField";
 import { useTheme, useMediaQuery, Collapse } from "@mui/material";
-
 
 const initialData = [
   {
@@ -42,13 +39,16 @@ export default function CustomersPage() {
   const [filteredData, setFilteredData] = useState(initialData);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-
   const [searchName, setSearchName] = useState("");
   const [searchEmail, setSearchEmail] = useState("");
   const [searchDate, setSearchDate] = useState("");
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  // Helper to create options in the shape { label, value }
+  const makeOptions = (arr) =>
+    Array.from(new Set(arr.filter(Boolean))).map((v) => ({ label: v, value: v }));
 
   const handleSearch = () => {
     const filtered = customers.filter((customer) => {
@@ -64,7 +64,6 @@ export default function CustomersPage() {
         (searchDate === "" || customer.date === searchDate)
       );
     });
-
     setFilteredData(filtered);
   };
 
@@ -80,7 +79,6 @@ export default function CustomersPage() {
     const updated = [newEntry, ...customers];
     setCustomers(updated);
     setFilteredData(updated);
-    setIsModalOpen(false);
   };
 
   return (
@@ -96,7 +94,7 @@ export default function CustomersPage() {
           startIcon={<FilterList />}
           onClick={() => setShowFilters((prev) => !prev)}
         >
-          {showFilters ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+          {showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </Button>
 
         <Button
@@ -112,8 +110,7 @@ export default function CustomersPage() {
         </Button>
       </Box>
 
-      {/* 👇 Filters appear ONLY when button clicked */}
-
+      {/* Filters */}
       <Collapse in={showFilters}>
         <Box
           sx={{
@@ -134,20 +131,22 @@ export default function CustomersPage() {
           <GenericSelectField
             label="Customer Name"
             value={searchName}
-            onChange={(e) => setSearchName(e.target.value)}
-            options={[...new Set(customers.map((c) => c.customerName))]}
+            onChange={(e) => setSearchName(e?.target?.value ?? e)}
+            options={makeOptions(customers.map((c) => c.customerName))}
           />
 
           <GenericSelectField
             label="Email Address"
             value={searchEmail}
-            onChange={(e) => setSearchEmail(e.target.value)}
-            options={[...new Set(customers.map((c) => c.email))]}
+            onChange={(e) => setSearchEmail(e?.target?.value ?? e)}
+            options={makeOptions(customers.map((c) => c.email))}
           />
 
           <GenericDateField
             value={searchDate}
-            onChange={(e) => setSearchDate(e.target.value)}
+            onChange={(valOrEvent) =>
+              setSearchDate(valOrEvent?.target?.value ?? valOrEvent ?? "")
+            }
           />
 
           <Button
@@ -164,7 +163,6 @@ export default function CustomersPage() {
         </Box>
       </Collapse>
 
-
       <GenericTable
         columns={tableColumns}
         data={filteredData}
@@ -175,8 +173,7 @@ export default function CustomersPage() {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         title="Create Customer"
-        mode="form"
-        columns={2}
+        mode="add"
         onSubmit={handleCreateCustomer}
         fields={[
           { id: "customerName", label: "Customer Name" },

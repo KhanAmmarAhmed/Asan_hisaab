@@ -48,27 +48,12 @@ export default function IncomePage() {
   const [customerName, setCustomerName] = useState("");
   const [accountHead, setAccountHead] = useState("");
   const [searchDate, setSearchDate] = useState("");
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [modalMode, setModalMode] = useState("add");
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // const handleSearch = () => {
-  //   const filtered = incomeData.filter((item) => {
-  //     return (
-  //       (customerName === "" ||
-  //         (item.customerName || "")
-  //           .toLowerCase()
-  //           .includes(customerName.toLowerCase())) &&
-  //       (accountHead === "" ||
-  //         (item.accountHead || "")
-  //           .toLowerCase()
-  //           .includes(accountHead.toLowerCase())) &&
-  //       (searchDate === "" || item.date === searchDate)
-  //     );
-  //   });
-
-  //   setFilteredData(filtered);
-  // };
 
   const handleAddIncome = (formData) => {
     const newVoucher = String(incomeData.length + 1).padStart(2, "0");
@@ -102,6 +87,12 @@ export default function IncomePage() {
     });
   }, [incomeData, customerName, accountHead, searchDate]);
 
+  const handleRowClick = (row) => {
+    setSelectedRow(row);
+    setModalMode("detail-actions");
+    setIsModalOpen(true);
+  };
+
   return (
     <Box className="space-y-4">
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
@@ -116,7 +107,11 @@ export default function IncomePage() {
         <Button
           variant="contained"
           startIcon={<Add />}
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setModalMode("add");
+            setSelectedRow(null);
+            setIsModalOpen(true);
+          }}
           sx={{
             backgroundColor: "#1B0D3F",
             color: "#FFFFFF",
@@ -187,27 +182,42 @@ export default function IncomePage() {
         columns={tableColumns}
         data={filteredData}
         emptyMessage="No income entries found"
+      // onRowClick={handleRowClick}
       />
       <GenericModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        title="Income Detail"
-        mode="form"
+        title={modalMode === "add" ? "Add Income Detail" : "Income Detail"}
+        mode={modalMode}
         columns={2}
-        showAddFileButton
+        showAddFileButton={modalMode === "add"}
+        selectedRow={selectedRow}
         onSubmit={handleAddIncome} // ✅ ADD THIS
-        fields={[
-          { id: "customerName", label: "Customer Name" },
-          { id: "accountHead", label: "Account Head" },
-          { id: "paymentMethod", label: "Payment Method" },
-          { id: "amount", label: "Amount" },
-          {
-            id: "description",
-            label: "Description",
-            type: "textarea",
-            rows: 2,
-          },
-        ]}
+        fields={
+          modalMode === "add"
+            ? [
+              { id: "customerName", label: "Customer Name" },
+              { id: "accountHead", label: "Account Head" },
+              { id: "paymentMethod", label: "Payment Method" },
+              { id: "amount", label: "Amount" },
+              {
+                id: "description",
+                label: "Description",
+                type: "textarea",
+                rows: 2,
+              },
+            ]
+            : [
+              { id: "customerName", label: "Customer Name" },
+              { id: "accountHead", label: "Account Head" },
+              { id: "paymentMethod", label: "Payment Method" },
+              { id: "date", label: "Date" },
+            ]
+        }
+        onPrint={() => window.print()}
+        onShare={() => console.log("Share clicked")}
+        onSave={() => console.log("Save clicked")}
+        onEdit={() => console.log("Edit clicked")}
       />
     </Box>
   );

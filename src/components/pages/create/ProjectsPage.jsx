@@ -3,9 +3,7 @@ import Box from "@mui/material/Box";
 import { Button, Typography, IconButton, Collapse, useTheme, useMediaQuery } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import { Add, FilterList } from "@mui/icons-material";
-
-import { Edit } from "lucide-react";
+import { Add, FilterList, Edit } from "@mui/icons-material";
 import GenericModal from "@/components/generic/GenericModal";
 import GenericSelectField from "@/components/generic/GenericSelectField";
 
@@ -33,7 +31,9 @@ const ProjectsPage = () => {
       // Edit existing project
       setProjects((prev) =>
         prev.map((proj, idx) =>
-          idx === editingProjectIndex ? { ...proj, name: formData.projectName } : proj
+          idx === editingProjectIndex
+            ? { ...proj, name: formData.projectName }
+            : proj
         )
       );
     } else {
@@ -44,7 +44,6 @@ const ProjectsPage = () => {
       ]);
     }
     setEditingProjectIndex(null);
-    setIsModalOpen(false);
   };
 
   const handleEdit = (index) => {
@@ -75,7 +74,10 @@ const ProjectsPage = () => {
             setEditingProjectIndex(null);
             setIsModalOpen(true);
           }}
-          sx={{ backgroundColor: "#1B0D3F", "&:hover": { backgroundColor: "#2D1B69" } }}
+          sx={{
+            backgroundColor: "#1B0D3F",
+            "&:hover": { backgroundColor: "#2D1B69" }
+          }}
         >
           Add
         </Button>
@@ -97,14 +99,18 @@ const ProjectsPage = () => {
           <GenericSelectField
             label="Project Name"
             value={searchName}
-            onChange={(e) => setSearchName(e.target.value)}
+            onChange={(e) => setSearchName(e?.target?.value ?? e)}
             options={projects.map((proj) => ({ label: proj.name, value: proj.name }))}
           />
 
           <Button
             variant="contained"
             onClick={handleSearch}
-            sx={{ borderRadius: 0.5, backgroundColor: "#1B0D3F", "&:hover": { backgroundColor: "#2D1B69" } }}
+            sx={{
+              borderRadius: 0.5,
+              backgroundColor: "#1B0D3F",
+              "&:hover": { backgroundColor: "#2D1B69" }
+            }}
           >
             Search
           </Button>
@@ -121,6 +127,7 @@ const ProjectsPage = () => {
                 p: 2,
                 borderRadius: 1,
                 backgroundColor: "#FFFFFF",
+                border: "1px solid #E0E0E0",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
@@ -133,8 +140,7 @@ const ProjectsPage = () => {
                 </Typography>
               </Box>
               <IconButton onClick={() => handleEdit(index)}>
-                {/* <Edit /> */}
-                <Edit size={30} color="#1B0D3F" />
+                <Edit sx={{ color: "#1B0D3F" }} />
               </IconButton>
             </Box>
           ))}
@@ -146,14 +152,13 @@ const ProjectsPage = () => {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         title={editingProjectIndex !== null ? "Edit Project" : "Create Project"}
-        mode="form"
-        columns={2}
+        mode="add"
         onSubmit={handleCreateOrEditProject}
         fields={[
           {
             id: "projectName",
             label: "Project Name",
-            defaultValue: editingProjectIndex !== null ? projects[editingProjectIndex].name : "",
+            defaultValue: editingProjectIndex !== null ? projects[editingProjectIndex]?.name : "",
           },
         ]}
       />

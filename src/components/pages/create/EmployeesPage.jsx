@@ -178,7 +178,7 @@ export default function EmployeesPage() {
                 open={isModalOpen}
                 onOpenChange={setIsModalOpen}
                 title="Create Employee"
-                mode="form"
+                mode="add"
                 columns={2}
                 onSubmit={handleCreateEmployee}
                 fields={[
