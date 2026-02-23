@@ -28,6 +28,7 @@ import {
   InsertDriveFile,
 } from "@mui/icons-material";
 import GenericTable from "./GenericTable";
+// import GenericSelectField from "./GenericSelectField";
 
 // Helper function to get status color
 const getStatusColor = (status) => {
@@ -56,6 +57,8 @@ export default function GenericModal({
   onShare,
   onSave,
   onEdit,
+  showDescription = false,
+  showFileUpload = false,
 }) {
   const [formData, setFormData] = useState({});
   const [dragActive, setDragActive] = useState(false);
@@ -223,34 +226,36 @@ export default function GenericModal({
 
             {/* Drag and Drop File Upload */}
             <Box sx={{ mt: 1 }}>
-              {/* Payment Description - Only if not handled in fields */}
-              {!fields.find((f) => f.id === "description") && (
-                <Box>
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 600, mb: 0.5, color: "#1B0D3F" }}
-                  >
-                    Payment Description
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={2}
-                    placeholder="Enter payment description"
-                    value={formData.description || ""}
-                    onChange={(e) =>
-                      handleChange("description", e.target.value)
-                    }
-                    size="small"
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: 0.5,
-                        bgcolor: "#F9F9F9",
-                      },
-                    }}
-                  />
-                </Box>
-              )}
+              {showDescription &&
+                !fields.find((f) => f.id === "description") && (
+                  <Box>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 600, mb: 0.5, color: "#1B0D3F" }}
+                    >
+                      Payment Description
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={2}
+                      placeholder="Enter payment description"
+                      value={formData.description || ""}
+                      onChange={(e) =>
+                        handleChange("description", e.target.value)
+                      }
+                      size="small"
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 0.5,
+                          bgcolor: "#F9F9F9",
+                        },
+                      }}
+                    />
+                  </Box>
+                )}
+              {/* {showDescription &&
+                !fields.find((f) => f.id === "description") && ( */}
               <Box>
                 <Typography
                   variant="body2"
@@ -319,7 +324,11 @@ export default function GenericModal({
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 2 }}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 2,
+                        }}
                       >
                         <Box
                           sx={{
@@ -359,6 +368,7 @@ export default function GenericModal({
                   )}
                 </Box>
               </Box>
+              {/* )} */}
             </Box>
 
             <Divider sx={{ my: 1 }} />

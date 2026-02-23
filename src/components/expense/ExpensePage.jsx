@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Box from "@mui/material/Box";
 import { useMemo } from "react";
 import { Button, Collapse, useTheme, useMediaQuery } from "@mui/material";
@@ -10,27 +10,6 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import GenericDateField from "@/components/generic/GenericDateField";
 
-const initialData = [
-  {
-    voucher: "01",
-    customerName: "Mr. Adnan Tariq",
-    accountHead: "Munem Habib",
-    paymentMethod: "Bank",
-    date: "2/24/2023",
-    status: "Invoiced",
-    amount: "Rs. 40,000",
-  },
-  {
-    voucher: "02",
-    customerName: "Ammar Khan",
-    accountHead: "Expence Account",
-    paymentMethod: "Cash",
-    date: "3/24/2023",
-    status: "Invoiced",
-    amount: "Rs. 10,000",
-  },
-];
-
 const tableColumns = [
   { id: "voucher", label: "Voucher#", width: "10%" },
   { id: "customerName", label: "Customer Name", width: "18%" },
@@ -40,10 +19,23 @@ const tableColumns = [
   { id: "status", label: "Status", width: "12%" },
   { id: "amount", label: "Amount", width: "14%" },
 ];
+const paymentOptions = [
+  "Cash",
+  "Bank",
+  "Cheque",
+  "Online Transfer",
+  "Credit Card",
+  "Debit Card",
+];
 
 const ExpensePage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [incomeData, setIncomeData] = useState(initialData);
+  const STORAGE_KEY = "expenseTableData";
+  const [incomeData, setIncomeData] = useState(() => {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    return savedData ? JSON.parse(savedData) : [];
+  });
+
   const [showFilters, setShowFilters] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [accountHead, setAccountHead] = useState("");
@@ -92,6 +84,10 @@ const ExpensePage = () => {
     setIsModalOpen(true);
   };
 
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(incomeData));
+  }, [incomeData]);
+
   return (
     <Box className="space-y-4">
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
@@ -125,7 +121,12 @@ const ExpensePage = () => {
       <Collapse in={showFilters}>
         <Box
           sx={{
-            display: "flex",
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "1fr 1fr",
+              md: "1fr 1fr 1fr 0.5fr",
+            },
             gap: 2,
             width: "100%",
             mt: 2,
@@ -195,23 +196,29 @@ const ExpensePage = () => {
         fields={
           modalMode === "add"
             ? [
-              { id: "customerName", label: "Customer Name" },
-              { id: "accountHead", label: "Account Head" },
-              { id: "paymentMethod", label: "Payment Method" },
-              { id: "amount", label: "Amount" },
-              {
-                id: "description",
-                label: "Description",
-                type: "textarea",
-                rows: 4,
-              },
-            ]
+                { id: "customerName", label: "Customer Name" },
+                { id: "accountHead", label: "Account Head" },
+                {
+                  id: "paymentMethod",
+                  label: "Payment Method",
+                  placeHolder: "Select payment method",
+                  type: "select",
+                  options: paymentOptions,
+                },
+                { id: "amount", label: "Amount" },
+                {
+                  id: "description",
+                  label: "Description",
+                  type: "textarea",
+                  rows: 2,
+                },
+              ]
             : [
-              { id: "customerName", label: "Customer Name" },
-              { id: "accountHead", label: "Account Head" },
-              { id: "paymentMethod", label: "Payment Method" },
-              { id: "date", label: "Date" },
-            ]
+                { id: "customerName", label: "Customer Name" },
+                { id: "accountHead", label: "Account Head" },
+                { id: "paymentMethod", label: "Payment Method" },
+                { id: "date", label: "Date" },
+              ]
         }
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}

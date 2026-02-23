@@ -1,39 +1,50 @@
-
-import { useTab } from "@/context/TabContext";
-import DashboardPage from "@/components/dashboard/DashboardPage";
-import IncomePage from "@/components/income/IncomePage";
-import PlaceholderPage from "@/components/pages/MaintenancePage";
-import ExpensePage from "@/components/expense/ExpensePage";
-import InvoicesPage from "@/components/invoices/InvoicesPage";
-import CashbookPage from "@/components/cashbook/CashbookPage";
-
+// src/components/layout/TabContent.jsx
+import { Outlet, NavLink } from "react-router-dom";
+// optional: import/use TabContext if you want to keep local context in sync
+import { useEffect } from "react";
+import { useTab } from "@/context/TabContext"; // optional
 
 export default function TabContent() {
-  const { activeTab } = useTab();
+  const { setActiveTab } = useTab?.() || {}; // optional safe access
 
-  if (activeTab === "dashboard") {
-    return <DashboardPage />;
-  }
-
-  if (activeTab === "income") {
-    return <IncomePage />;
-  }
-  if (activeTab === "expense") {
-    return <ExpensePage />;
-  }
-  if (activeTab === "invoices") {
-    return <InvoicesPage />;
-  }
-  if (activeTab === "cashbook") {
-    return <CashbookPage />;
-  }
-  if (activeTab === "report") {
-    return <CashbookPage />;
-  }
-
-  const config = pageConfig[activeTab];
+  // If you keep TabContext, sync it from the path when the route changes.
+  // (React Router's useLocation can be used too — omitted here for brevity.)
+  useEffect(() => {
+    // You can also use useLocation and update setActiveTab based on pathname
+    // if you want the context to reflect the route. This is optional.
+  }, [setActiveTab]);
 
   return (
-    <PlaceholderPage title={config.title} description={config.description} />
+    <div>
+      {/* HERO / Tabs UI */}
+      <nav className="hero-tabs">
+        <NavLink
+          to="/dashboard"
+          className={({ isActive }) => (isActive ? "tab active" : "tab")}
+        ></NavLink>
+        <NavLink
+          to="/income"
+          className={({ isActive }) => (isActive ? "tab active" : "tab")}
+        ></NavLink>
+        <NavLink
+          to="/expense"
+          className={({ isActive }) => (isActive ? "tab active" : "tab")}
+        ></NavLink>
+        <NavLink
+          to="/invoices"
+          className={({ isActive }) => (isActive ? "tab active" : "tab")}
+        ></NavLink>
+        <NavLink
+          to="/cashbook"
+          className={({ isActive }) => (isActive ? "tab active" : "tab")}
+        ></NavLink>
+        {/* ... other tabs */}
+      </nav>
+
+      {/* the nested route content renders here */}
+      <div className="tab-content">
+        <Outlet />
+      </div>
+    </div>
   );
 }

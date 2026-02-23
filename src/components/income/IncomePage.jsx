@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Box from "@mui/material/Box";
 import { useMemo } from "react";
 import { Button, Collapse, useTheme, useMediaQuery } from "@mui/material";
@@ -10,26 +10,26 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import GenericDateField from "@/components/generic/GenericDateField";
 
-const initialData = [
-  {
-    voucher: "01",
-    customerName: "Mr. Adnan Tariq",
-    accountHead: "Munem Habib",
-    paymentMethod: "Bank",
-    date: "2/24/2023",
-    status: "Invoiced",
-    amount: "Rs. 40,000",
-  },
-  {
-    voucher: "02",
-    customerName: "Mr. Adnan Tariq",
-    accountHead: "Habib Ullah",
-    paymentMethod: "Cash",
-    date: "3/24/2023",
-    status: "Invoiced",
-    amount: "Rs. 10,000",
-  },
-];
+// const initialData = [
+//   {
+//     voucher: "01",
+//     customerName: "Mr. Adnan Tariq",
+//     accountHead: "Munem Habib",
+//     paymentMethod: "Bank",
+//     date: "2/24/2023",
+//     status: "Invoiced",
+//     amount: "Rs. 40,000",
+//   },
+//   {
+//     voucher: "02",
+//     customerName: "Mr. Adnan Tariq",
+//     accountHead: "Habib Ullah",
+//     paymentMethod: "Cash",
+//     date: "3/24/2023",
+//     status: "Invoiced",
+//     amount: "Rs. 10,000",
+//   },
+// ];
 
 const tableColumns = [
   { id: "voucher", label: "Voucher#", width: "10%" },
@@ -40,10 +40,21 @@ const tableColumns = [
   { id: "status", label: "Status", width: "12%" },
   { id: "amount", label: "Amount", width: "14%" },
 ];
+const paymentOptions = [
+  "Cash",
+  "Bank",
+  "Cheque",
+  "Online Transfer",
+  "Credit Card",
+  "Debit Card",
+];
 
 export default function IncomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [incomeData, setIncomeData] = useState(initialData);
+  const [incomeData, setIncomeData] = useState(() => {
+    const savedData = localStorage.getItem("incomeData");
+    return savedData ? JSON.parse(savedData) : [];
+  });
   const [showFilters, setShowFilters] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [accountHead, setAccountHead] = useState("");
@@ -53,7 +64,6 @@ export default function IncomePage() {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
 
   const handleAddIncome = (formData) => {
     const newVoucher = String(incomeData.length + 1).padStart(2, "0");
@@ -70,6 +80,9 @@ export default function IncomePage() {
 
     setIncomeData((prev) => [newEntry, ...prev]);
   };
+  useEffect(() => {
+    localStorage.setItem("incomeData", JSON.stringify(incomeData));
+  }, [incomeData]);
   const filteredData = useMemo(() => {
     return incomeData.filter((item) => {
       return (
@@ -127,7 +140,12 @@ export default function IncomePage() {
       <Collapse in={showFilters}>
         <Box
           sx={{
-            display: "flex",
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "1fr 1fr",
+              md: "1fr 1fr 1fr 0.5fr",
+            },
             gap: 2,
             width: "100%",
             mt: 2,
@@ -182,7 +200,7 @@ export default function IncomePage() {
         columns={tableColumns}
         data={filteredData}
         emptyMessage="No income entries found"
-      // onRowClick={handleRowClick}
+        // onRowClick={handleRowClick}
       />
       <GenericModal
         open={isModalOpen}
@@ -196,23 +214,28 @@ export default function IncomePage() {
         fields={
           modalMode === "add"
             ? [
-              { id: "customerName", label: "Customer Name" },
-              { id: "accountHead", label: "Account Head" },
-              { id: "paymentMethod", label: "Payment Method" },
-              { id: "amount", label: "Amount" },
-              {
-                id: "description",
-                label: "Description",
-                type: "textarea",
-                rows: 2,
-              },
-            ]
+                { id: "customerName", label: "Customer Name" },
+                { id: "accountHead", label: "Account Head" },
+                {
+                  id: "paymentMethod",
+                  label: "Payment Method",
+                  type: "select",
+                  options: paymentOptions,
+                },
+                { id: "amount", label: "Amount" },
+                {
+                  id: "description",
+                  label: "Description",
+                  type: "textarea",
+                  rows: 2,
+                },
+              ]
             : [
-              { id: "customerName", label: "Customer Name" },
-              { id: "accountHead", label: "Account Head" },
-              { id: "paymentMethod", label: "Payment Method" },
-              { id: "date", label: "Date" },
-            ]
+                { id: "customerName", label: "Customer Name" },
+                { id: "accountHead", label: "Account Head" },
+                { id: "paymentMethod", label: "Payment Method" },
+                { id: "date", label: "Date" },
+              ]
         }
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}

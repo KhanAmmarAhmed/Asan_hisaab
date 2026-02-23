@@ -12,7 +12,7 @@ const GenericDateField = ({
     return (
         <TextField
             type="date"
-            label={label}
+            // label={label}
             value={value}
             onChange={onChange}
             size={size}

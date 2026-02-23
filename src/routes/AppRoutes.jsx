@@ -1,4 +1,5 @@
-import { Routes, Route } from "react-router-dom";
+// src/routes/AppRoutes.jsx
+import { Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "../components/layout/MainLayout";
 import TabContent from "../components/layout/TabContent";
 
@@ -11,13 +12,32 @@ import CashInOutPage from "../components/pages/report/CashInOutPage";
 import LedgerPage from "../components/pages/report/LedgerPage";
 import PageNotFound from "../components/pages/PageNotFound";
 
+import DashboardPage from "@/components/dashboard/DashboardPage";
+import IncomePage from "@/components/income/IncomePage";
+import ExpensePage from "@/components/expense/ExpensePage";
+import InvoicesPage from "@/components/invoices/InvoicesPage";
+import CashbookPage from "@/components/cashbook/CashbookPage";
+import PlaceholderPage from "@/components/pages/MaintenancePage";
+
 export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<MainLayout />}>
-        {/* Index route renders TabContent — this keeps HeroSection tabs working */}
-        <Route index element={<TabContent />} />
-        {/* Create dropdown routes */}
+        {/* Redirect root to a default tab (dashboard) */}
+        <Route index element={<Navigate to="dashboard" replace />} />
+
+        {/* Parent route that renders hero tabs + an Outlet for nested tab pages */}
+        <Route element={<TabContent />}>
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="income" element={<IncomePage />} />
+          <Route path="expense" element={<ExpensePage />} />
+          <Route path="invoices" element={<InvoicesPage />} />
+          <Route path="cashbook" element={<CashbookPage />} />
+          {/* fallback placeholder route for other tabs you might have */}
+          <Route path=":other" element={<PlaceholderPage />} />
+        </Route>
+
+        {/* Other top-level routes (create/report pages) remain siblings */}
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="vendors" element={<VendorsPage />} />
@@ -25,6 +45,7 @@ export default function AppRoutes() {
         <Route path="profit" element={<ProfitPage />} />
         <Route path="cash-in-out" element={<CashInOutPage />} />
         <Route path="ledger" element={<LedgerPage />} />
+
         {/* Catch-all for undefined routes */}
         <Route path="*" element={<PageNotFound />} />
       </Route>

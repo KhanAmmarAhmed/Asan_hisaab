@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
-import Typography from "@mui/material/Typography";
+// import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import Menu from "@mui/material/Menu";
@@ -9,20 +9,33 @@ import MenuItem from "@mui/material/MenuItem";
 import AddIcon from "@mui/icons-material/Add";
 import SettingsIcon from "@mui/icons-material/Settings";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-// ⚠️ CHANGED: replaced `import { Link }` with `useNavigate` for proper MenuItem styling.
-// To restore: re-import { Link } from "react-router-dom" and wrap each MenuItem text in <Link to="...">
 import { useNavigate } from "react-router-dom";
+import { useContext } from "react";
+import { CompanyContext } from "@/context/CompanyContext";
+import { useMemo } from "react";
+// import { Modal } from "@mui/material";
 
 export default function Navbar() {
+  const { companyInfo } = useContext(CompanyContext);
   const [createAnchor, setCreateAnchor] = useState(null);
   const [setupAnchor, setSetupAnchor] = useState(null);
   const navigate = useNavigate();
 
-  // ⚠️ CHANGED: helper closes menu then navigates — replaces old <Link> inside MenuItem
   const handleCreate = (path) => {
     setCreateAnchor(null);
     navigate(path);
   };
+  const formatCompanyName = useMemo(() => {
+    if (!companyInfo?.name) return "";
+
+    if (companyInfo.name.length < 6) return companyInfo.name;
+
+    return companyInfo.name
+      .split(" ")
+      .filter(Boolean)
+      .map((word) => word[0].toUpperCase())
+      .join("");
+  }, [companyInfo?.name]);
 
   return (
     <AppBar
@@ -58,10 +71,10 @@ export default function Navbar() {
               fontSize: "2rem",
             }}
           >
-            FIS
+            {formatCompanyName}
           </Box>
           <Box sx={{ display: { xs: "none", md: "inline" } }}>
-            Friends It Solutions
+            {companyInfo?.name}
           </Box>
         </Box>
         <Box

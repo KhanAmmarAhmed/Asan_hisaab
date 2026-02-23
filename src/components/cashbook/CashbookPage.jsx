@@ -4,6 +4,8 @@ import { Edit, Plus } from "lucide-react";
 import GenericModal from "@/components/generic/GenericModal";
 import AccountListItem from "./AccountListItem";
 import { Button } from "@mui/material";
+import { useContext } from "react";
+import { CompanyContext } from "@/context/CompanyContext";
 
 const mockAccounts = [
   { id: 1, name: "Cash", type: "cash", balance: "Rs. 10,000/-" },
@@ -41,10 +43,7 @@ export default function CashbookPage() {
   const [accounts, setAccounts] = useState(mockAccounts);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditingCompany, setIsEditingCompany] = useState(false);
-  const [companyInfo, setCompanyInfo] = useState({
-    name: "Friends It Solutions",
-    type: "FIS - IT Company",
-  });
+  const { companyInfo, setCompanyInfo } = useContext(CompanyContext);
 
   const handleAddAccount = (formData) => {
     console.log("[v0] Adding new account:", formData);
@@ -59,12 +58,10 @@ export default function CashbookPage() {
   };
 
   const handleEditCompany = (formData) => {
-    console.log("[v0] Editing company info:", formData);
     setCompanyInfo({
       name: formData.companyName,
       type: formData.companyType,
     });
-    setIsEditingCompany(false);
   };
 
   return (
@@ -97,17 +94,16 @@ export default function CashbookPage() {
               color: "#ffffff",
               fontWeight: 600,
               fontSize: "1rem",
-              px: 3,
-              py: 1,
-              borderRadius: 1,
+              borderRadius: 0.5,
               textTransform: "none",
+              gap: 1,
               transition: "all 0.3s ease",
               "&:hover": {
                 backgroundColor: "#2d1b69",
               },
             }}
           >
-            <Plus size={25} />
+            <Plus size={18} />
             Add
           </Button>
         </div>

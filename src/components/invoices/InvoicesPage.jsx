@@ -1,5 +1,3 @@
-
-
 import { useState } from "react";
 import Box from "@mui/material/Box";
 import { useMemo } from "react";
@@ -146,7 +144,6 @@ export default function InvoicesPage() {
       </Box>
 
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-
         <Button
           variant="contained"
           startIcon={<FilterList />}
@@ -271,7 +268,9 @@ export default function InvoicesPage() {
           { id: "madeBy", label: "Made By" },
         ]}
         selectedRow={selectedRow}
-        onSubmit={modalMode === "selection" ? handleTypeSelect : handleAddInvoices}
+        onSubmit={
+          modalMode === "selection" ? handleTypeSelect : handleAddInvoices
+        }
         submitButtonLabel="Save Invoice"
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}
