@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useContext, useMemo } from "react";
 import Box from "@mui/material/Box";
 import { Button, Typography } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -9,23 +9,7 @@ import GenericModal from "@/components/generic/GenericModal";
 import GenericSelectField from "@/components/generic/GenericSelectField";
 import GenericDateField from "@/components/generic/GenericDateField";
 import { useTheme, useMediaQuery, Collapse } from "@mui/material";
-
-const initialData = [
-  {
-    customerName: "Muhammad Usman",
-    phone: "03048973476",
-    email: "usman123@gmail.com",
-    address: "Rawalpindi",
-    date: "2024-01-10",
-  },
-  {
-    customerName: "Ehtesham Ali",
-    phone: "03157629450",
-    email: "ehteshamali@gmail.com",
-    address: "Mianwali",
-    date: "2024-01-15",
-  },
-];
+import { DataContext } from "@/context/DataContext";
 
 const tableColumns = [
   { id: "customerName", label: "Customer Name", width: "25%" },
@@ -35,8 +19,7 @@ const tableColumns = [
 ];
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState(initialData);
-  const [filteredData, setFilteredData] = useState(initialData);
+  const { customers, addCustomer } = useContext(DataContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [searchName, setSearchName] = useState("");
@@ -50,8 +33,8 @@ export default function CustomersPage() {
   const makeOptions = (arr) =>
     Array.from(new Set(arr.filter(Boolean))).map((v) => ({ label: v, value: v }));
 
-  const handleSearch = () => {
-    const filtered = customers.filter((customer) => {
+  const filteredData = useMemo(() => {
+    return customers.filter((customer) => {
       return (
         (searchName === "" ||
           customer.customerName
@@ -64,8 +47,7 @@ export default function CustomersPage() {
         (searchDate === "" || customer.date === searchDate)
       );
     });
-    setFilteredData(filtered);
-  };
+  }, [customers, searchName, searchEmail, searchDate]);
 
   const handleCreateCustomer = (formData) => {
     const newEntry = {
@@ -76,9 +58,8 @@ export default function CustomersPage() {
       date: new Date().toISOString().split("T")[0],
     };
 
-    const updated = [newEntry, ...customers];
-    setCustomers(updated);
-    setFilteredData(updated);
+    addCustomer(newEntry);
+    setIsModalOpen(false);
   };
 
   return (
@@ -151,7 +132,6 @@ export default function CustomersPage() {
 
           <Button
             variant="contained"
-            onClick={handleSearch}
             sx={{
               borderRadius: 0.5,
               backgroundColor: "#1B0D3F",

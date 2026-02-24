@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import Box from "@mui/material/Box";
 import { Button, Typography, IconButton, Collapse, useTheme, useMediaQuery } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -6,50 +6,46 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { Add, FilterList, Edit } from "@mui/icons-material";
 import GenericModal from "@/components/generic/GenericModal";
 import GenericSelectField from "@/components/generic/GenericSelectField";
+import { DataContext } from "@/context/DataContext";
 
 const ProjectsPage = () => {
+  const { projects, addProject, updateProject } = useContext(DataContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProjectIndex, setEditingProjectIndex] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [searchName, setSearchName] = useState("");
-  const [projects, setProjects] = useState([
-    { name: "Friends It Solutions", type: "FIS - IT Company" },
-    { name: "BSB", type: "FIS - IT Company" },
-    { name: "Business Solutions", type: "FIS - IT Company" },
-  ]);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const handleSearch = () => {
     console.log("Search filter:", searchName);
-    // Implement search logic here, e.g., filter projects array
+    // Implement search logic here if needed
   };
 
   const handleCreateOrEditProject = (formData) => {
     if (editingProjectIndex !== null) {
       // Edit existing project
-      setProjects((prev) =>
-        prev.map((proj, idx) =>
-          idx === editingProjectIndex
-            ? { ...proj, name: formData.projectName }
-            : proj
-        )
-      );
+      updateProject(editingProjectIndex, {
+        ...projects[editingProjectIndex],
+        name: formData.projectName
+      });
     } else {
       // Create new project
-      setProjects((prev) => [
-        ...prev,
-        { name: formData.projectName, type: "FIS - IT Company" },
-      ]);
+      addProject({ name: formData.projectName, type: "FIS - IT Company" });
     }
     setEditingProjectIndex(null);
+    setIsModalOpen(false);
   };
 
   const handleEdit = (index) => {
     setEditingProjectIndex(index);
     setIsModalOpen(true);
   };
+
+  const filteredProjects = projects.filter(proj =>
+    proj.name.toLowerCase().includes(searchName.toLowerCase())
+  );
 
   return (
     <Box className="space-y-4">
@@ -120,7 +116,7 @@ const ProjectsPage = () => {
       {/* Project Cards */}
       <Box>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 2 }}>
-          {projects.map((project, index) => (
+          {filteredProjects.map((project, index) => (
             <Box
               key={index}
               sx={{

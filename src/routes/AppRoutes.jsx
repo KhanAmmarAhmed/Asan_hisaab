@@ -4,7 +4,7 @@ import MainLayout from "../components/layout/MainLayout";
 import TabContent from "../components/layout/TabContent";
 
 import CustomersPage from "../components/pages/create/CustomersPage";
-import VendorsPage from "../components/pages/create/Venders";
+import VendorsPage from "../components/pages/create/VendorsPage";
 import ProjectsPage from "../components/pages/create/ProjectsPage";
 import EmployeesPage from "../components/pages/create/EmployeesPage";
 import ProfitPage from "../components/pages/report/ProfitPage";
@@ -13,10 +13,10 @@ import LedgerPage from "../components/pages/report/LedgerPage";
 import PageNotFound from "../components/pages/PageNotFound";
 
 import DashboardPage from "@/components/dashboard/DashboardPage";
-import IncomePage from "@/components/income/IncomePage";
-import ExpensePage from "@/components/expense/ExpensePage";
-import InvoicesPage from "@/components/invoices/InvoicesPage";
-import CashbookPage from "@/components/cashbook/CashbookPage";
+import IncomePage from "@/components/pages/income/IncomePage";
+import ExpensePage from "@/components/pages/expense/ExpensePage";
+import InvoicesPage from "@/components/pages/invoices/InvoicesPage";
+import CashbookPage from "@/components/pages/cashbook/CashbookPage";
 import PlaceholderPage from "@/components/pages/MaintenancePage";
 
 export default function AppRoutes() {

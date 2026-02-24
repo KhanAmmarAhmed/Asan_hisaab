@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useContext, useMemo } from "react";
 import Box from "@mui/material/Box";
 import { Button, Typography } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -10,23 +9,7 @@ import GenericModal from "@/components/generic/GenericModal";
 import GenericSelectField from "@/components/generic/GenericSelectField";
 import GenericDateField from "@/components/generic/GenericDateField";
 import { useTheme, useMediaQuery, Collapse } from "@mui/material";
-
-const initialData = [
-  {
-    venderName: "Muhammad Usman",
-    phone: "03048973476",
-    email: "usman123@gmail.com",
-    address: "Rawalpindi",
-    date: "2024-01-10",
-  },
-  {
-    venderName: "Ehtesham Ali",
-    phone: "03157629450",
-    email: "ehteshamali@gmail.com",
-    address: "Mianwali",
-    date: "2024-01-15",
-  },
-];
+import { DataContext } from "@/context/DataContext";
 
 const tableColumns = [
   { id: "venderName", label: "Vender Name", width: "25%" },
@@ -36,8 +19,7 @@ const tableColumns = [
 ];
 
 export default function VendersPage() {
-  const [venders, setVenders] = useState(initialData);
-  const [filteredData, setFilteredData] = useState(initialData);
+  const { vendors, addVendor } = useContext(DataContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -51,8 +33,8 @@ export default function VendersPage() {
   const makeOptions = (arr) =>
     Array.from(new Set(arr.filter(Boolean))).map((v) => ({ label: v, value: v }));
 
-  const handleSearch = () => {
-    const filtered = venders.filter((vender) => {
+  const filteredData = useMemo(() => {
+    return vendors.filter((vender) => {
       return (
         (searchName === "" ||
           (vender.venderName || "")
@@ -65,11 +47,9 @@ export default function VendersPage() {
         (searchDate === "" || vender.date === searchDate)
       );
     });
+  }, [vendors, searchName, searchEmail, searchDate]);
 
-    setFilteredData(filtered);
-  };
-
-  const handleCreateCustomer = (formData) => {
+  const handleCreateVendor = (formData) => {
     const newEntry = {
       venderName: formData.venderName || "",
       phone: formData.phone || "",
@@ -78,10 +58,7 @@ export default function VendersPage() {
       date: new Date().toISOString().split("T")[0],
     };
 
-    const updated = [newEntry, ...venders];
-    setVenders(updated);
-    // If filters active, you might want to re-run the current filter; we'll show updated list
-    setFilteredData(updated);
+    addVendor(newEntry);
     setIsModalOpen(false);
   };
 
@@ -137,14 +114,14 @@ export default function VendersPage() {
             label="Vender Name"
             value={searchName}
             onChange={(e) => setSearchName(e?.target?.value ?? e)}
-            options={makeOptions(venders.map((c) => c.venderName))}
+            options={makeOptions(vendors.map((c) => c.venderName))}
           />
 
           <GenericSelectField
             label="Email Address"
             value={searchEmail}
             onChange={(e) => setSearchEmail(e?.target?.value ?? e)}
-            options={makeOptions(venders.map((c) => c.email))}
+            options={makeOptions(vendors.map((c) => c.email))}
           />
 
           <GenericDateField
@@ -156,7 +133,6 @@ export default function VendersPage() {
 
           <Button
             variant="contained"
-            onClick={handleSearch}
             sx={{
               borderRadius: 0.5,
               backgroundColor: "#1B0D3F",
@@ -180,7 +156,7 @@ export default function VendersPage() {
         title="Create Vender"
         mode="add"
         columns={2}
-        onSubmit={handleCreateCustomer}
+        onSubmit={handleCreateVendor}
         fields={[
           { id: "venderName", label: "Vender Name" },
           { id: "phone", label: "Phone Number" },

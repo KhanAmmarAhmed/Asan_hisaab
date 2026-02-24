@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useContext, useMemo } from "react";
 import Box from "@mui/material/Box";
-import { useMemo } from "react";
 import { Button, Collapse, useTheme, useMediaQuery } from "@mui/material";
 import { Add, FilterList } from "@mui/icons-material";
 import GenericTable from "@/components/generic/GenericTable";
@@ -9,6 +8,7 @@ import GenericSelectField from "@/components/generic/GenericSelectField";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import GenericDateField from "@/components/generic/GenericDateField";
+import { DataContext } from "@/context/DataContext";
 
 const tableColumns = [
   { id: "voucher", label: "Voucher#", width: "10%" },
@@ -19,6 +19,7 @@ const tableColumns = [
   { id: "status", label: "Status", width: "12%" },
   { id: "amount", label: "Amount", width: "14%" },
 ];
+
 const paymentOptions = [
   "Cash",
   "Bank",
@@ -28,14 +29,9 @@ const paymentOptions = [
   "Debit Card",
 ];
 
-const ExpensePage = () => {
+export default function IncomePage() {
+  const { income, addIncome, customers } = useContext(DataContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const STORAGE_KEY = "expenseTableData";
-  const [incomeData, setIncomeData] = useState(() => {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    return savedData ? JSON.parse(savedData) : [];
-  });
-
   const [showFilters, setShowFilters] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [accountHead, setAccountHead] = useState("");
@@ -47,22 +43,26 @@ const ExpensePage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const handleAddIncome = (formData) => {
-    const newVoucher = String(incomeData.length + 1).padStart(2, "0");
+    const newVoucher = String(income.length + 1).padStart(2, "0");
 
     const newEntry = {
       voucher: newVoucher,
       customerName: formData.customerName || "",
       accountHead: formData.accountHead || "",
       paymentMethod: formData.paymentMethod || "",
-      date: new Date().toLocaleDateString(),
+      date: new Date().toISOString().split("T")[0],
       status: "Invoiced",
-      amount: `Rs. ${formData.amount || 0}`,
+      amount: Number(formData.amount || 0),
     };
 
-    setIncomeData((prev) => [newEntry, ...prev]);
+    addIncome(newEntry);
+    setIsModalOpen(false);
+  };
+  const formatCurrency = (amount) => {
+    return `Rs. ${Number(amount || 0).toLocaleString()}`;
   };
   const filteredData = useMemo(() => {
-    return incomeData.filter((item) => {
+    return income.filter((item) => {
       return (
         (customerName === "" ||
           (item.customerName || "")
@@ -76,17 +76,7 @@ const ExpensePage = () => {
           new Date(item.date).toISOString().split("T")[0] === searchDate)
       );
     });
-  }, [incomeData, customerName, accountHead, searchDate]);
-
-  const handleRowClick = (row) => {
-    setSelectedRow(row);
-    setModalMode("detail-actions");
-    setIsModalOpen(true);
-  };
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(incomeData));
-  }, [incomeData]);
+  }, [income, customerName, accountHead, searchDate]);
 
   return (
     <Box className="space-y-4">
@@ -98,6 +88,7 @@ const ExpensePage = () => {
         >
           {showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </Button>
+
         <Button
           variant="contained"
           startIcon={<Add />}
@@ -140,7 +131,10 @@ const ExpensePage = () => {
             value={customerName}
             onChange={(e) => setCustomerName(e.target.value)}
             options={[
-              ...new Set(incomeData.map((item) => item.customerName)),
+              ...new Set([
+                ...income.map((item) => item.customerName),
+                ...customers.map((c) => c.customerName)
+              ])
             ].map((name) => ({
               label: name,
               value: name,
@@ -151,7 +145,7 @@ const ExpensePage = () => {
             value={accountHead}
             onChange={(e) => setAccountHead(e.target.value)}
             options={[
-              ...new Set(incomeData.map((item) => item.accountHead)),
+              ...new Set(income.map((item) => item.accountHead)),
             ].map((name) => ({
               label: name,
               value: name,
@@ -179,46 +173,51 @@ const ExpensePage = () => {
 
       <GenericTable
         columns={tableColumns}
-        data={filteredData}
+        data={filteredData.map(item => ({
+          ...item,
+          amount: formatCurrency(item.amount)
+        }))}
         emptyMessage="No income entries found"
-        onRowClick={handleRowClick}
+        onRowClick={(row) => {
+          setSelectedRow(row);
+          setModalMode("detail-actions");
+          setIsModalOpen(true);
+        }}
       />
-
       <GenericModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        title={modalMode === "add" ? "Add Expense Detail" : "Expense Detail"}
+        title={modalMode === "add" ? "Add Income Detail" : "Income Detail"}
         mode={modalMode}
         columns={2}
         showAddFileButton={modalMode === "add"}
         selectedRow={selectedRow}
-        onSubmit={handleAddIncome} // ✅ ADD THIS
+        onSubmit={handleAddIncome}
         fields={
           modalMode === "add"
             ? [
-                { id: "customerName", label: "Customer Name" },
-                { id: "accountHead", label: "Account Head" },
-                {
-                  id: "paymentMethod",
-                  label: "Payment Method",
-                  placeHolder: "Select payment method",
-                  type: "select",
-                  options: paymentOptions,
-                },
-                { id: "amount", label: "Amount" },
-                {
-                  id: "description",
-                  label: "Description",
-                  type: "textarea",
-                  rows: 2,
-                },
-              ]
+              { id: "customerName", label: "Customer Name", type: "select", options: customers.map(c => c.customerName) },
+              { id: "accountHead", label: "Account Head" },
+              {
+                id: "paymentMethod",
+                label: "Payment Method",
+                type: "select",
+                options: paymentOptions,
+              },
+              { id: "amount", label: "Amount" },
+              {
+                id: "description",
+                label: "Description",
+                type: "textarea",
+                rows: 2,
+              },
+            ]
             : [
-                { id: "customerName", label: "Customer Name" },
-                { id: "accountHead", label: "Account Head" },
-                { id: "paymentMethod", label: "Payment Method" },
-                { id: "date", label: "Date" },
-              ]
+              { id: "customerName", label: "Customer Name" },
+              { id: "accountHead", label: "Account Head" },
+              { id: "paymentMethod", label: "Payment Method" },
+              { id: "date", label: "Date" },
+            ]
         }
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}
@@ -227,6 +226,4 @@ const ExpensePage = () => {
       />
     </Box>
   );
-};
-
-export default ExpensePage;
+}

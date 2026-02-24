@@ -1,174 +1,127 @@
-
-
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import {
     Box,
     Typography,
     Button,
     Paper,
-    Divider,
+    Table,
+    TableHead,
+    TableRow,
+    TableCell,
+    TableBody,
+    Chip,
 } from "@mui/material";
 import GenericDateField from "../../generic/GenericDateField";
 import PrintIcon from "@mui/icons-material/Print";
+import { DataContext, parseAmount } from "@/context/DataContext";
 
 const PURPLE = "#2E266D";
 
 export default function LedgerPage() {
-    // 🔹 Dynamic Income Table Data (Replace with API later)
-    const [incomeData] = useState([
-        { id: 1, title: "Salary", amount: 35000, date: "2026-02-01" },
-        { id: 2, title: "Mr. Adnan Tariq", amount: 25000, date: "2026-02-10" },
-    ]);
-
-    // 🔹 Dynamic Expense Table Data
-    const [expenseData] = useState([
-        { id: 1, title: "Salary", amount: 15000, date: "2026-02-05" },
-    ]);
-
+    const { income, expenses } = useContext(DataContext);
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
 
+    const inDateRange = (itemDate) => {
+        if (!fromDate && !toDate) return true;
+        const d = new Date(itemDate);
+        if (fromDate && d < new Date(fromDate)) return false;
+        if (toDate && d > new Date(toDate)) return false;
+        return true;
+    };
 
-    // 🔹 Filter by Date
-    const filteredIncome = useMemo(() => {
-        return incomeData.filter((item) => {
-            if (!fromDate || !toDate) return true;
-            return item.date >= fromDate && item.date <= toDate;
+    // Merge income + expenses into a unified ledger, sorted by date
+    const ledgerEntries = useMemo(() => {
+        const incomeEntries = income
+            .filter(i => inDateRange(i.date))
+            .map(i => ({
+                date: i.date,
+                description: i.customerName || i.accountHead || "Income",
+                reference: i.paymentMethod || "—",
+                debit: 0,
+                credit: parseAmount(i.amount),
+                type: "income",
+                voucher: i.voucher,
+            }));
+
+        const expenseEntries = expenses
+            .filter(e => inDateRange(e.date))
+            .map(e => ({
+                date: e.date,
+                description: e.customerName || e.accountHead || "Expense",
+                reference: e.paymentMethod || "—",
+                debit: parseAmount(e.amount),
+                credit: 0,
+                type: "expense",
+                voucher: e.voucher,
+            }));
+
+        return [...incomeEntries, ...expenseEntries]
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+    }, [income, expenses, fromDate, toDate]);
+
+    // Running balance
+    const ledgerWithBalance = useMemo(() => {
+        let balance = 0;
+        return ledgerEntries.map(entry => {
+            balance += entry.credit - entry.debit;
+            return { ...entry, balance };
         });
-    }, [incomeData, fromDate, toDate]);
+    }, [ledgerEntries]);
 
-    const filteredExpense = useMemo(() => {
-        return expenseData.filter((item) => {
-            if (!fromDate || !toDate) return true;
-            return item.date >= fromDate && item.date <= toDate;
-        });
-    }, [expenseData, fromDate, toDate]);
+    const totalCredits = ledgerEntries.reduce((s, e) => s + e.credit, 0);
+    const totalDebits = ledgerEntries.reduce((s, e) => s + e.debit, 0);
+    const netBalance = totalCredits - totalDebits;
 
-    // 🔹 Calculations
-    const totalIncome = filteredIncome.reduce((sum, item) => sum + item.amount, 0);
-    const totalExpense = filteredExpense.reduce((sum, item) => sum + item.amount, 0);
-    const grossProfit = totalIncome - totalExpense;
-
-    const hasData =
-        filteredIncome.length > 0 || filteredExpense.length > 0;
-
+    const hasData = ledgerEntries.length > 0;
 
     return (
-        <Box >
-            {/* Header */}
-            <Typography variant="h5" fontWeight={600} mb={2}>
-                Ledger
-            </Typography>
+        <Box>
+            <Typography variant="h5" fontWeight={600} mb={2}>Ledger</Typography>
 
             {/* Filters */}
-
-            <Box display={{ md: "flex", xs: "block", sm: "flex" }} justifyContent="space-between" mb={2} flexWrap="wrap">
+            <Box display={{ md: "flex", xs: "block" }} justifyContent="space-between" mb={2} flexWrap="wrap">
                 <Box display="flex" gap={2} alignItems="center" mb={{ md: 0, xs: 2 }}>
                     <GenericDateField
                         label="From"
                         value={fromDate}
-                        onChange={(valOrEvent) =>
-                            setFromDate(valOrEvent?.target?.value ?? valOrEvent ?? "")
-                        }
+                        onChange={(v) => setFromDate(v?.target?.value ?? v ?? "")}
                     />
-
-
                     <GenericDateField
                         label="To"
                         value={toDate}
-                        onChange={(valOrEvent) =>
-                            setToDate(valOrEvent?.target?.value ?? valOrEvent ?? "")
-                        }
+                        onChange={(v) => setToDate(v?.target?.value ?? v ?? "")}
                     />
-
                     <Button
                         variant="contained"
                         size="small"
-                        sx={{
-                            backgroundColor: PURPLE,
-                            height: 40,
-                            px: 4,
-                            flexShrink: 1,
-                        }}
+                        sx={{ backgroundColor: PURPLE, height: 40, px: 4 }}
                     >
                         Generate
                     </Button>
+                    {(fromDate || toDate) && (
+                        <Button size="small" onClick={() => { setFromDate(""); setToDate(""); }}>
+                            Clear
+                        </Button>
+                    )}
                 </Box>
-
                 <Box flexGrow={1} />
-
-            </Box>
-
-
-            {/* Income Section */}
-            <Paper elevation={0} sx={{ borderRadius: 0.5, mb: 2 }}>
-                <Box
-                    sx={{
-                        backgroundColor: PURPLE,
-                        color: "#fff",
-                        px: 3,
-                        py: 1.5,
-                        borderTopLeftRadius: 6,
-                        borderBottomLeftRadius: 6,
-                        borderTopRightRadius: 6,
-                        borderBottomRightRadius: 6,
-                    }}
-                >
-                    <Typography fontWeight={600}>Income</Typography>
-                </Box>
-
-                <Box p={3}>
-                    {filteredIncome.map((item) => (
-                        <Box
-                            key={item.id}
-                            display="flex"
-                            justifyContent="space-between"
-                            mb={1}
-                        >
-                            <Typography>{item.title}</Typography>
-                            <Typography>Rs. {item.amount.toLocaleString()}/-</Typography>
-                        </Box>
-                    ))}
-
-                    <Divider sx={{ my: 2 }} />
-
-                    <Box display="flex" justifyContent="space-between">
-                        <Typography fontWeight={600}>Total Income</Typography>
-                        <Typography fontWeight={600}>
-                            Rs. {totalIncome.toLocaleString()}/-
-                        </Typography>
-                    </Box>
-                </Box>
-            </Paper>
-            <Box display="flex" justifyContent="flex-end">
                 {hasData && (
                     <Box display="flex" gap={2}>
                         <Button
                             variant="contained"
                             size="small"
                             startIcon={<PrintIcon />}
-                            sx={{
-                                backgroundColor: PURPLE,
-                                height: 40,
-                                "&:hover": { backgroundColor: "#251b4f" },
-                            }}
+                            sx={{ backgroundColor: PURPLE, height: 40, "&:hover": { backgroundColor: "#251b4f" } }}
                             onClick={() => window.print()}
                         >
                             Print PDF
                         </Button>
-
                         <Button
                             variant="contained"
                             size="small"
-                            sx={{
-                                backgroundColor: PURPLE,
-                                height: 40,
-                                "&:hover": { backgroundColor: "#251b4f" },
-                            }}
-                            onClick={() => {
-                                // Add your download logic here
-                                console.log("Download clicked");
-                            }}
+                            sx={{ backgroundColor: PURPLE, height: 40, "&:hover": { backgroundColor: "#251b4f" } }}
+                            onClick={() => console.log("Download clicked")}
                         >
                             Download
                         </Button>
@@ -176,8 +129,73 @@ export default function LedgerPage() {
                 )}
             </Box>
 
+            {!hasData ? (
+                <Paper elevation={0} sx={{ p: 4, textAlign: "center", borderRadius: 0.5 }}>
+                    <Typography color="text.secondary">
+                        No ledger entries found. Add Income or Expense transactions to view here.
+                    </Typography>
+                </Paper>
+            ) : (
+                <Paper elevation={0} sx={{ borderRadius: 0.5, overflow: "hidden" }}>
+                    <Box sx={{ backgroundColor: PURPLE, color: "#fff", px: 3, py: 1.5 }}>
+                        <Typography fontWeight={600}>Transaction Ledger</Typography>
+                    </Box>
+                    <Table size="small">
+                        <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
+                            <TableRow>
+                                <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>Reference</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700, color: "error.main" }}>Debit</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700, color: "success.main" }}>Credit</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700 }}>Balance</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {ledgerWithBalance.map((entry, idx) => (
+                                <TableRow key={idx} sx={{ "&:hover": { backgroundColor: "#fafafa" } }}>
+                                    <TableCell>{entry.date}</TableCell>
+                                    <TableCell>
+                                        <Box>
+                                            <Typography variant="body2" fontWeight={500}>{entry.description}</Typography>
+                                            <Chip
+                                                label={entry.type === "income" ? "Income" : "Expense"}
+                                                size="small"
+                                                color={entry.type === "income" ? "success" : "error"}
+                                                sx={{ height: 18, fontSize: "0.65rem", mt: 0.3 }}
+                                            />
+                                        </Box>
+                                    </TableCell>
+                                    <TableCell>{entry.reference}</TableCell>
+                                    <TableCell align="right" sx={{ color: "error.main" }}>
+                                        {entry.debit > 0 ? `Rs. ${Number(entry.debit).toLocaleString()}` : "—"}
+                                    </TableCell>
+                                    <TableCell align="right" sx={{ color: "success.main" }}>
+                                        {entry.credit > 0 ? `Rs. ${Number(entry.credit).toLocaleString()}` : "—"}
+                                    </TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 600, color: entry.balance >= 0 ? "success.main" : "error.main" }}>
+                                        Rs. {Number(entry.balance).toLocaleString()}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
 
-
+                            {/* Totals row */}
+                            <TableRow sx={{ backgroundColor: "#f5f5f5", fontWeight: "bold" }}>
+                                <TableCell colSpan={3} sx={{ fontWeight: 700 }}>Totals</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700, color: "error.main" }}>
+                                    Rs. {totalDebits.toLocaleString()}
+                                </TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700, color: "success.main" }}>
+                                    Rs. {totalCredits.toLocaleString()}
+                                </TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700, color: netBalance >= 0 ? "success.main" : "error.main" }}>
+                                    Rs. {netBalance.toLocaleString()}
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </Paper>
+            )}
         </Box>
     );
 }

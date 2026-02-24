@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useContext, useMemo } from "react";
 import Box from "@mui/material/Box";
-import { useMemo } from "react";
 import { Button, Collapse, useTheme, useMediaQuery } from "@mui/material";
 import { Add, FilterList } from "@mui/icons-material";
 import GenericTable from "@/components/generic/GenericTable";
@@ -9,27 +8,7 @@ import GenericSelectField from "@/components/generic/GenericSelectField";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import GenericDateField from "@/components/generic/GenericDateField";
-
-// const initialData = [
-//   {
-//     voucher: "01",
-//     customerName: "Mr. Adnan Tariq",
-//     accountHead: "Munem Habib",
-//     paymentMethod: "Bank",
-//     date: "2/24/2023",
-//     status: "Invoiced",
-//     amount: "Rs. 40,000",
-//   },
-//   {
-//     voucher: "02",
-//     customerName: "Mr. Adnan Tariq",
-//     accountHead: "Habib Ullah",
-//     paymentMethod: "Cash",
-//     date: "3/24/2023",
-//     status: "Invoiced",
-//     amount: "Rs. 10,000",
-//   },
-// ];
+import { DataContext } from "@/context/DataContext";
 
 const tableColumns = [
   { id: "voucher", label: "Voucher#", width: "10%" },
@@ -40,6 +19,7 @@ const tableColumns = [
   { id: "status", label: "Status", width: "12%" },
   { id: "amount", label: "Amount", width: "14%" },
 ];
+
 const paymentOptions = [
   "Cash",
   "Bank",
@@ -49,12 +29,9 @@ const paymentOptions = [
   "Debit Card",
 ];
 
-export default function IncomePage() {
+const ExpensePage = () => {
+  const { expenses, addExpense, customers } = useContext(DataContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [incomeData, setIncomeData] = useState(() => {
-    const savedData = localStorage.getItem("incomeData");
-    return savedData ? JSON.parse(savedData) : [];
-  });
   const [showFilters, setShowFilters] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [accountHead, setAccountHead] = useState("");
@@ -65,26 +42,29 @@ export default function IncomePage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const handleAddIncome = (formData) => {
-    const newVoucher = String(incomeData.length + 1).padStart(2, "0");
+  const handleAddExpense = (formData) => {
+    const newVoucher = String(expenses.length + 1).padStart(2, "0");
 
     const newEntry = {
       voucher: newVoucher,
       customerName: formData.customerName || "",
       accountHead: formData.accountHead || "",
       paymentMethod: formData.paymentMethod || "",
-      date: new Date().toISOString().split("T")[0],
+      date: new Date().toLocaleDateString(),
       status: "Invoiced",
-      amount: `Rs. ${formData.amount || 0}`,
+      amount: Number(formData.amount || 0),
     };
 
-    setIncomeData((prev) => [newEntry, ...prev]);
+    addExpense(newEntry);
+    setIsModalOpen(false);
   };
-  useEffect(() => {
-    localStorage.setItem("incomeData", JSON.stringify(incomeData));
-  }, [incomeData]);
+
+  const formatCurrency = (amount) => {
+    return `Rs. ${Number(amount || 0).toLocaleString()}`;
+  };
+
   const filteredData = useMemo(() => {
-    return incomeData.filter((item) => {
+    return expenses.filter((item) => {
       return (
         (customerName === "" ||
           (item.customerName || "")
@@ -98,7 +78,7 @@ export default function IncomePage() {
           new Date(item.date).toISOString().split("T")[0] === searchDate)
       );
     });
-  }, [incomeData, customerName, accountHead, searchDate]);
+  }, [expenses, customerName, accountHead, searchDate]);
 
   const handleRowClick = (row) => {
     setSelectedRow(row);
@@ -116,7 +96,6 @@ export default function IncomePage() {
         >
           {showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </Button>
-
         <Button
           variant="contained"
           startIcon={<Add />}
@@ -159,7 +138,10 @@ export default function IncomePage() {
             value={customerName}
             onChange={(e) => setCustomerName(e.target.value)}
             options={[
-              ...new Set(incomeData.map((item) => item.customerName)),
+              ...new Set([
+                ...expenses.map((item) => item.customerName),
+                ...customers.map((c) => c.customerName)
+              ])
             ].map((name) => ({
               label: name,
               value: name,
@@ -170,7 +152,7 @@ export default function IncomePage() {
             value={accountHead}
             onChange={(e) => setAccountHead(e.target.value)}
             options={[
-              ...new Set(incomeData.map((item) => item.accountHead)),
+              ...new Set(expenses.map((item) => item.accountHead)),
             ].map((name) => ({
               label: name,
               value: name,
@@ -198,44 +180,49 @@ export default function IncomePage() {
 
       <GenericTable
         columns={tableColumns}
-        data={filteredData}
-        emptyMessage="No income entries found"
-        // onRowClick={handleRowClick}
+        data={filteredData.map(item => ({
+          ...item,
+          amount: formatCurrency(item.amount)
+        }))}
+        emptyMessage="No expense entries found"
+        onRowClick={handleRowClick}
       />
+
       <GenericModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        title={modalMode === "add" ? "Add Income Detail" : "Income Detail"}
+        title={modalMode === "add" ? "Add Expense Detail" : "Expense Detail"}
         mode={modalMode}
         columns={2}
         showAddFileButton={modalMode === "add"}
         selectedRow={selectedRow}
-        onSubmit={handleAddIncome} // ✅ ADD THIS
+        onSubmit={handleAddExpense}
         fields={
           modalMode === "add"
             ? [
-                { id: "customerName", label: "Customer Name" },
-                { id: "accountHead", label: "Account Head" },
-                {
-                  id: "paymentMethod",
-                  label: "Payment Method",
-                  type: "select",
-                  options: paymentOptions,
-                },
-                { id: "amount", label: "Amount" },
-                {
-                  id: "description",
-                  label: "Description",
-                  type: "textarea",
-                  rows: 2,
-                },
-              ]
+              { id: "customerName", label: "Customer Name", type: "select", options: customers.map(c => c.customerName) },
+              { id: "accountHead", label: "Account Head" },
+              {
+                id: "paymentMethod",
+                label: "Payment Method",
+                placeHolder: "Select payment method",
+                type: "select",
+                options: paymentOptions,
+              },
+              { id: "amount", label: "Amount" },
+              {
+                id: "description",
+                label: "Description",
+                type: "textarea",
+                rows: 2,
+              },
+            ]
             : [
-                { id: "customerName", label: "Customer Name" },
-                { id: "accountHead", label: "Account Head" },
-                { id: "paymentMethod", label: "Payment Method" },
-                { id: "date", label: "Date" },
-              ]
+              { id: "customerName", label: "Customer Name" },
+              { id: "accountHead", label: "Account Head" },
+              { id: "paymentMethod", label: "Payment Method" },
+              { id: "date", label: "Date" },
+            ]
         }
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}
@@ -244,4 +231,6 @@ export default function IncomePage() {
       />
     </Box>
   );
-}
+};
+
+export default ExpensePage;

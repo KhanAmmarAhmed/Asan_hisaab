@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useContext, useMemo } from "react";
 import Box from "@mui/material/Box";
-import { useMemo } from "react";
 import {
   Button,
   IconButton,
@@ -19,33 +18,7 @@ import GenericSelectField from "@/components/generic/GenericSelectField";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import GenericDateField from "@/components/generic/GenericDateField";
-
-const initialData = [
-  {
-    voucher: "01",
-    type: "Sales Invoice",
-    ammount: "Rs. 40,000",
-    entityType: "Customer",
-    entity: "Mr. Adnan Tariq",
-    date: "2/24/2023",
-    reference: "Ref-12345",
-    taxAble: "Yes",
-    madeBy: "Admin",
-    status: "Paid",
-  },
-  {
-    voucher: "02",
-    type: "Purchase Invoice",
-    ammount: "Rs. 10,000",
-    entityType: "Supplier",
-    entity: "Mr. Ali Khan",
-    date: "3/24/2023",
-    reference: "Ref-67890",
-    taxAble: "No",
-    madeBy: "Admin",
-    status: "Pending",
-  },
-];
+import { DataContext } from "@/context/DataContext";
 
 const tableColumns = [
   { id: "voucher", label: "Voucher#", width: "5%" },
@@ -63,9 +36,9 @@ const tableColumns = [
 const statusOptions = ["All", "Invoiced", "Paid", "Pending"];
 
 export default function InvoicesPage() {
+  const { invoices, addInvoice, customers, vendors, totalPaidInvoices, totalPendingInvoices } = useContext(DataContext);
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [invoiceData, setInvoiceData] = useState(initialData);
   const [selectedRow, setSelectedRow] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [reference, setReference] = useState("");
@@ -79,11 +52,11 @@ export default function InvoicesPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const handleAddInvoices = (formData) => {
-    const newVoucher = String(invoiceData.length + 1).padStart(2, "0");
+    const newVoucher = String(invoices.length + 1).padStart(2, "0");
     const newEntry = {
       voucher: newVoucher,
       type: selectedType || formData.type || "",
-      ammount: formData.ammount || "",
+      ammount: Number(formData.ammount || 0),
       entityType: formData.entityType || "",
       entity: formData.entity || "",
       date: new Date().toISOString().split("T")[0],
@@ -92,7 +65,12 @@ export default function InvoicesPage() {
       madeBy: formData.madeBy || "",
       status: "Pending",
     };
-    setInvoiceData((prev) => [newEntry, ...prev]);
+    addInvoice(newEntry);
+    setIsModalOpen(false);
+  };
+
+  const formatCurrency = (amount) => {
+    return `Rs. ${Number(amount || 0).toLocaleString()}`;
   };
 
   const handleTypeSelect = (type) => {
@@ -101,7 +79,7 @@ export default function InvoicesPage() {
   };
 
   const filteredData = useMemo(() => {
-    return invoiceData
+    return invoices
       .filter((item) => {
         return (
           (selectedStatus === "All" || item.status === selectedStatus) &&
@@ -119,6 +97,7 @@ export default function InvoicesPage() {
       })
       .map((item) => ({
         ...item,
+        ammount: formatCurrency(item.ammount),
         action: (
           <IconButton
             onClick={(e) => {
@@ -134,13 +113,13 @@ export default function InvoicesPage() {
           </IconButton>
         ),
       }));
-  }, [invoiceData, selectedStatus, reference, type, entityType, searchDate]);
+  }, [invoices, selectedStatus, reference, type, entityType, searchDate]);
 
   return (
     <Box className="space-y-4">
       <Box sx={{ display: "flex", gap: 2.5, flexWrap: "wrap" }}>
-        <BalanceCards title="Paid Amount" amount="Rs. 50,000" />
-        <BalanceCards title="Pending Amount" amount="Rs. 25,000" />
+        <BalanceCards title="Paid Amount" amount={formatCurrency(totalPaidInvoices)} />
+        <BalanceCards title="Pending Amount" amount={formatCurrency(totalPendingInvoices)} />
       </Box>
 
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
@@ -192,7 +171,7 @@ export default function InvoicesPage() {
             label="Reference"
             value={reference}
             onChange={(e) => setReference(e.target.value)}
-            options={[...new Set(invoiceData.map((i) => i.reference))].map(
+            options={[...new Set(invoices.map((i) => i.reference))].map(
               (val) => ({ label: val, value: val }),
             )}
           />
@@ -200,7 +179,7 @@ export default function InvoicesPage() {
             label="Type"
             value={type}
             onChange={(e) => setType(e.target.value)}
-            options={[...new Set(invoiceData.map((i) => i.type))].map(
+            options={[...new Set(invoices.map((i) => i.type))].map(
               (val) => ({ label: val, value: val }),
             )}
           />
@@ -208,7 +187,7 @@ export default function InvoicesPage() {
             label="Entity Type"
             value={entityType}
             onChange={(e) => setEntityType(e.target.value)}
-            options={[...new Set(invoiceData.map((i) => i.entityType))].map(
+            options={[...new Set(invoices.map((i) => i.entityType))].map(
               (val) => ({ label: val, value: val }),
             )}
           />

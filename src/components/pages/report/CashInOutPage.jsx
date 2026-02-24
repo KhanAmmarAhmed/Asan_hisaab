@@ -1,65 +1,59 @@
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import {
     Box,
     Typography,
     Paper,
-    Avatar,
-    Button,
 } from "@mui/material";
-import { Add } from "@mui/icons-material";
 import GenericDateField from "../../generic/GenericDateField";
 import GenericModal from "../../generic/GenericModal";
-
-const PURPLE = "#2E266D";
+import { DataContext, parseAmount } from "@/context/DataContext";
 
 export default function CashInOutPage() {
-    // 🔹 Sample Data (Replace with API later)
-    const [transactions, setTransactions] = useState([
-        {
-            id: 1,
-            bankName: "Meezan Bank",
-            amount: 10000,
-            type: "in", // in | out
-            date: "2023-01-31",
-        },
-        {
-            id: 2,
-            bankName: "Alfalah Bank",
-            amount: 10000,
-            type: "in",
-            date: "2023-01-31",
-        },
-    ]);
+    const { income, expenses } = useContext(DataContext);
 
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState(null);
-    const [modalMode, setModalMode] = useState("add");
 
-    // 🔹 Filter by Date
-    const filteredTransactions = useMemo(() => {
-        return transactions.filter((item) => {
-            if (!fromDate || !toDate) return true;
-            return item.date >= fromDate && item.date <= toDate;
-        });
-    }, [transactions, fromDate, toDate]);
+    // Merge income + expenses into a unified history
+    const transactionHistory = useMemo(() => {
+        const incomeEntries = income.map(i => ({
+            id: i.id || Date.now() + Math.random(),
+            bankName: i.customerName || i.accountHead || "Income",
+            amount: parseAmount(i.amount),
+            type: "in",
+            date: i.date,
+            description: i.accountHead || "Received Income",
+            voucher: i.voucher,
+            paymentMethod: i.paymentMethod
+        }));
+
+        const expenseEntries = expenses.map(e => ({
+            id: e.id || Date.now() + Math.random(),
+            bankName: e.customerName || e.accountHead || "Expense",
+            amount: parseAmount(e.amount),
+            type: "out",
+            date: e.date,
+            description: e.accountHead || "Paid Expense",
+            voucher: e.voucher,
+            paymentMethod: e.paymentMethod
+        }));
+
+        return [...incomeEntries, ...expenseEntries]
+            .filter((item) => {
+                if (!fromDate && !toDate) return true;
+                const d = new Date(item.date);
+                if (fromDate && d < new Date(fromDate)) return false;
+                if (toDate && d > new Date(toDate)) return false;
+                return true;
+            })
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+    }, [income, expenses, fromDate, toDate]);
 
     const formatDate = (date) => {
         const d = new Date(date);
-        return d.toLocaleDateString("en-GB");
-    };
-
-    const handleAddTransaction = (formData) => {
-        const newTransaction = {
-            id: transactions.length + 1,
-            bankName: formData.bankName || "Unknown Bank",
-            amount: formData.amount || 0,
-            type: formData.type || "in",
-            date: new Date().toISOString().split("T")[0],
-            description: formData.description || "",
-        };
-        setTransactions([newTransaction, ...transactions]);
+        return isNaN(d) ? date : d.toLocaleDateString("en-GB");
     };
 
     return (
@@ -67,41 +61,18 @@ export default function CashInOutPage() {
             {/* Header */}
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 <Typography variant="h5" fontWeight={600}>
-                    Cash In/Out
+                    Cash In/Out History
                 </Typography>
-                <Button
-                    variant="contained"
-                    startIcon={<Add />}
-                    onClick={() => {
-                        setModalMode("add");
-                        setSelectedRow(null);
-                        setIsModalOpen(true);
-                    }}
-                    sx={{
-                        backgroundColor: "#1B0D3F",
-                        color: "#FFFFFF",
-                        fontWeight: 600,
-                        fontSize: 14,
-                        px: 2.5,
-                        "&:hover": { backgroundColor: "#2D1B69" },
-                    }}
-                >
-                    Add
-                </Button>
             </Box>
 
             {/* Date Filters */}
-            <Box display="flex" gap={2} mb={2} width="40%">
+            <Box display="flex" gap={2} mb={2} width={{ xs: "100%", md: "40%" }}>
                 <Box flex={1}>
                     <GenericDateField
                         label="From"
                         width="100%"
                         value={fromDate}
-                        onChange={(valOrEvent) =>
-                            setFromDate(
-                                valOrEvent?.target?.value ?? valOrEvent ?? ""
-                            )
-                        }
+                        onChange={(v) => setFromDate(v?.target?.value ?? v ?? "")}
                     />
                 </Box>
                 <Box flex={1}>
@@ -109,87 +80,80 @@ export default function CashInOutPage() {
                         label="To"
                         width="100%"
                         value={toDate}
-                        onChange={(valOrEvent) =>
-                            setToDate(
-                                valOrEvent?.target?.value ?? valOrEvent ?? ""
-                            )
-                        }
+                        onChange={(v) => setToDate(v?.target?.value ?? v ?? "")}
                     />
                 </Box>
             </Box>
 
-            {/* Transaction List */}
-            {filteredTransactions.length === 0 ? (
+            {/* History List */}
+            {transactionHistory.length === 0 ? (
                 <Typography color="text.secondary">
-                    No transactions found for selected dates.
+                    No transactions found. Add Income or Expenses to see history here.
                 </Typography>
             ) : (
-                filteredTransactions.map((item) => (
+                transactionHistory.map((item) => (
                     <Paper
                         key={item.id}
                         elevation={0}
                         onClick={() => {
                             setSelectedRow({
                                 ...item,
-                                voucher: String(item.id),
-                                amount: `Rs. ${Number(item.amount).toLocaleString()}`
+                                voucher: item.voucher || String(item.id),
+                                amountDisplay: `Rs. ${item.amount.toLocaleString()}`
                             });
-                            setModalMode("detail-actions");
                             setIsModalOpen(true);
                         }}
                         sx={{
-                            p: 1,
+                            p: 1.5,
                             mb: 1,
                             borderRadius: 0.5,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "space-between",
                             backgroundColor: "#FFFFFF",
+                            border: "1px solid #f0f0f0",
                             cursor: "pointer",
                             "&:hover": { backgroundColor: "#F5F5F5" },
                         }}
                     >
                         {/* Left Side */}
-                        <Box display="flex" alignItems="center" gap={2} sx={{ height: "100%" }}>
+                        <Box display="flex" alignItems="center" gap={2}>
                             <Box
                                 sx={{
-                                    width: "50px",
-                                    height: "50px",
-                                    backgroundColor: PURPLE,
+                                    width: "45px",
+                                    height: "45px",
+                                    backgroundColor: item.type === "in" ? "#4CAF50" : "#E53935",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
                                     borderRadius: "4px",
+                                    flexShrink: 0
                                 }}
                             >
-                                <Typography color="white" fontWeight={600}>
-                                    {item.bankName.charAt(0)}
+                                <Typography color="white" fontWeight={700} fontSize="0.9rem">
+                                    {item.type === "in" ? "IN" : "OUT"}
                                 </Typography>
                             </Box>
 
-                            <Typography fontWeight={600}>
-                                {item.bankName}
-                            </Typography>
+                            <Box>
+                                <Typography fontWeight={600} variant="body1">
+                                    {item.bankName}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {item.description} &bull; {item.paymentMethod || "N/A"}
+                                </Typography>
+                            </Box>
                         </Box>
 
                         {/* Right Side */}
-                        <Box textAlign="right" display="flex" gap={5} justifyContent="center" alignItems="center">
+                        <Box textAlign="right">
                             <Typography
-                                fontWeight={600}
-                                color={
-                                    item.type === "in"
-                                        ? "green"
-                                        : "red"
-                                }
+                                fontWeight={700}
+                                color={item.type === "in" ? "success.main" : "error.main"}
                             >
-                                Rs. {Number(item.amount).toLocaleString()}/-
+                                {item.type === "in" ? "+" : "-"} Rs. {Number(item.amount).toLocaleString()}
                             </Typography>
-
-                            <Typography
-                                variant="body2"
-                                fontWeight={600}
-                                color="text.secondary"
-                            >
+                            <Typography variant="caption" color="text.secondary" fontWeight={500}>
                                 {formatDate(item.date)}
                             </Typography>
                         </Box>
@@ -200,33 +164,20 @@ export default function CashInOutPage() {
             <GenericModal
                 open={isModalOpen}
                 onOpenChange={setIsModalOpen}
-                title={modalMode === "add" ? "Add Transaction" : "Transaction Detail"}
-                mode={modalMode}
+                title="Transaction Details"
+                mode="detail"
                 columns={2}
-                showAddFileButton={modalMode === "add"}
                 selectedRow={selectedRow}
-                onSubmit={handleAddTransaction}
-                fields={
-                    modalMode === "add"
-                        ? [
-                            { id: "bankName", label: "Bank Name" },
-                            { id: "amount", label: "Amount" },
-                            { id: "type", label: "Type (in/out)" },
-                            { id: "date", label: "Date" }, // Optional in form if auto-set
-                            { id: "description", label: "Description", type: "textarea", rows: 2 },
-                        ]
-                        : [
-                            { id: "bankName", label: "Bank Name" },
-                            { id: "amount", label: "Amount" },
-                            { id: "type", label: "Type" },
-                            { id: "date", label: "Date" },
-                            { id: "description", label: "Description" },
-                        ]
-                }
+                fields={[
+                    { id: "bankName", label: "Account/Entity" },
+                    { id: "amountDisplay", label: "Amount" },
+                    { id: "type", label: "Type" },
+                    { id: "date", label: "Date" },
+                    { id: "description", label: "Head/Description" },
+                    { id: "paymentMethod", label: "Payment Method" },
+                    { id: "voucher", label: "Voucher/ID" },
+                ]}
                 onPrint={() => window.print()}
-                onShare={() => console.log("Share clicked")}
-                onSave={() => console.log("Save clicked")}
-                onEdit={() => console.log("Edit clicked")}
             />
         </Box>
     );

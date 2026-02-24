@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useContext, useMemo } from "react";
 import Box from "@mui/material/Box";
 import { Button, Typography } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -10,23 +9,7 @@ import GenericModal from "@/components/generic/GenericModal";
 import GenericSelectField from "@/components/generic/GenericSelectField";
 import GenericDateField from "@/components/generic/GenericDateField";
 import { useTheme, useMediaQuery, Collapse } from "@mui/material";
-
-const initialData = [
-    {
-        employeeName: "Muhammad Usman",
-        phone: "03048973476",
-        email: "usman123@gmail.com",
-        address: "Rawalpindi",
-        date: "2024-01-10",
-    },
-    {
-        employeeName: "Ehtesham Ali",
-        phone: "03157629450",
-        email: "ehteshamali@gmail.com",
-        address: "Mianwali",
-        date: "2024-01-15",
-    },
-];
+import { DataContext } from "@/context/DataContext";
 
 const tableColumns = [
     { id: "employeeName", label: "Employee Name", width: "25%" },
@@ -36,8 +19,7 @@ const tableColumns = [
 ];
 
 export default function EmployeesPage() {
-    const [employees, setEmployees] = useState(initialData);
-    const [filteredData, setFilteredData] = useState(initialData);
+    const { employees, addEmployee } = useContext(DataContext);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
 
@@ -51,8 +33,8 @@ export default function EmployeesPage() {
     const makeOptions = (arr) =>
         Array.from(new Set(arr.filter(Boolean))).map((v) => ({ label: v, value: v }));
 
-    const handleSearch = () => {
-        const filtered = employees.filter((employee) => {
+    const filteredData = useMemo(() => {
+        return employees.filter((employee) => {
             return (
                 (searchName === "" ||
                     (employee.employeeName || "")
@@ -65,9 +47,7 @@ export default function EmployeesPage() {
                 (searchDate === "" || employee.date === searchDate)
             );
         });
-
-        setFilteredData(filtered);
-    };
+    }, [employees, searchName, searchEmail, searchDate]);
 
     const handleCreateEmployee = (formData) => {
         const newEntry = {
@@ -78,10 +58,7 @@ export default function EmployeesPage() {
             date: new Date().toISOString().split("T")[0],
         };
 
-        const updated = [newEntry, ...employees];
-        setEmployees(updated);
-        // If filters active, you might want to re-run the current filter; we'll show updated list
-        setFilteredData(updated);
+        addEmployee(newEntry);
         setIsModalOpen(false);
     };
 
@@ -156,7 +133,6 @@ export default function EmployeesPage() {
 
                     <Button
                         variant="contained"
-                        onClick={handleSearch}
                         sx={{
                             borderRadius: 0.5,
                             backgroundColor: "#1B0D3F",

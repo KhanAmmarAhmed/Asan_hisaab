@@ -1,6 +1,7 @@
 import ThemeRegistry from "@/theme/ThemeRegistry";
 import { TabProvider } from "@/context/TabContext";
 import { CompanyProvider } from "./context/CompanyContext";
+import { DataProvider } from "./context/DataContext";
 import AppRoutes from "./routes/AppRoutes";
 
 function App() {
@@ -8,7 +9,9 @@ function App() {
     <ThemeRegistry>
       <TabProvider>
         <CompanyProvider>
-          <AppRoutes />
+          <DataProvider>
+            <AppRoutes />
+          </DataProvider>
         </CompanyProvider>
       </TabProvider>
     </ThemeRegistry>

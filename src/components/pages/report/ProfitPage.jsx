@@ -1,211 +1,192 @@
-
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import {
     Box,
     Typography,
     Button,
     Paper,
     Divider,
+    Chip,
 } from "@mui/material";
 import GenericDateField from "../../generic/GenericDateField";
 import PrintIcon from "@mui/icons-material/Print";
+import { DataContext, parseAmount } from "@/context/DataContext";
 
 const PURPLE = "#2E266D";
 
 export default function ProfitPage() {
-    // 🔹 Dynamic Income Table Data (Replace with API later)
-    const [incomeData] = useState([
-        { id: 1, title: "Salary", amount: 35000, date: "2026-02-01" },
-        { id: 2, title: "Mr. Adnan Tariq", amount: 25000, date: "2026-02-10" },
-    ]);
-
-    // 🔹 Dynamic Expense Table Data
-    const [expenseData] = useState([
-        { id: 1, title: "Salary", amount: 15000, date: "2026-02-05" },
-    ]);
-
+    const { income, expenses } = useContext(DataContext);
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
 
+    const inDateRange = (itemDate) => {
+        if (!fromDate && !toDate) return true;
+        const d = new Date(itemDate);
+        if (fromDate && d < new Date(fromDate)) return false;
+        if (toDate && d > new Date(toDate)) return false;
+        return true;
+    };
 
-    // 🔹 Filter by Date
-    const filteredIncome = useMemo(() => {
-        return incomeData.filter((item) => {
-            if (!fromDate || !toDate) return true;
-            return item.date >= fromDate && item.date <= toDate;
-        });
-    }, [incomeData, fromDate, toDate]);
+    const filteredIncome = useMemo(() =>
+        income.filter(item => inDateRange(item.date)),
+        [income, fromDate, toDate]
+    );
 
-    const filteredExpense = useMemo(() => {
-        return expenseData.filter((item) => {
-            if (!fromDate || !toDate) return true;
-            return item.date >= fromDate && item.date <= toDate;
-        });
-    }, [expenseData, fromDate, toDate]);
+    const filteredExpense = useMemo(() =>
+        expenses.filter(item => inDateRange(item.date)),
+        [expenses, fromDate, toDate]
+    );
 
-    // 🔹 Calculations
-    const totalIncome = filteredIncome.reduce((sum, item) => sum + item.amount, 0);
-    const totalExpense = filteredExpense.reduce((sum, item) => sum + item.amount, 0);
+    const totalIncome = useMemo(() =>
+        filteredIncome.reduce((sum, item) => sum + parseAmount(item.amount), 0),
+        [filteredIncome]
+    );
+
+    const totalExpense = useMemo(() =>
+        filteredExpense.reduce((sum, item) => sum + parseAmount(item.amount), 0),
+        [filteredExpense]
+    );
+
     const grossProfit = totalIncome - totalExpense;
-
-    const hasData =
-        filteredIncome.length > 0 || filteredExpense.length > 0;
-
+    const hasData = filteredIncome.length > 0 || filteredExpense.length > 0;
 
     return (
-        <Box >
-            {/* Header */}
+        <Box>
             <Typography variant="h5" fontWeight={600} mb={2}>
-                Profit
+                Profit &amp; Loss Report
             </Typography>
 
             {/* Filters */}
-
             <Box display={{ md: "flex", xs: "block", sm: "flex" }} justifyContent="space-between" mb={2} flexWrap="wrap">
                 <Box display="flex" gap={2} alignItems="center" mb={{ md: 0, xs: 2 }}>
                     <GenericDateField
                         label="From"
                         value={fromDate}
-                        onChange={(valOrEvent) =>
-                            setFromDate(valOrEvent?.target?.value ?? valOrEvent ?? "")
-                        }
+                        onChange={(v) => setFromDate(v?.target?.value ?? v ?? "")}
                     />
-
-
                     <GenericDateField
                         label="To"
                         value={toDate}
-                        onChange={(valOrEvent) =>
-                            setToDate(valOrEvent?.target?.value ?? valOrEvent ?? "")
-                        }
+                        onChange={(v) => setToDate(v?.target?.value ?? v ?? "")}
                     />
-
                     <Button
                         variant="contained"
                         size="small"
-                        sx={{
-                            backgroundColor: PURPLE,
-                            height: 40,
-                            px: 4,
-                            flexShrink: 1,
-                        }}
+                        onClick={() => { /* filtering is reactive */ }}
+                        sx={{ backgroundColor: PURPLE, height: 40, px: 4, flexShrink: 1 }}
                     >
                         Generate
                     </Button>
+                    {(fromDate || toDate) && (
+                        <Button size="small" onClick={() => { setFromDate(""); setToDate(""); }}>
+                            Clear
+                        </Button>
+                    )}
                 </Box>
-
                 <Box flexGrow={1} />
-
                 {hasData && (
                     <Button
                         variant="contained"
                         size="small"
                         startIcon={<PrintIcon />}
-                        sx={{
-                            backgroundColor: PURPLE,
-                            height: 40,
-                        }}
+                        sx={{ backgroundColor: PURPLE, height: 40 }}
                         onClick={() => window.print()}
                     >
                         Print PDF
                     </Button>
                 )}
-
             </Box>
 
+            {!hasData && (
+                <Paper elevation={0} sx={{ p: 4, textAlign: "center", borderRadius: 0.5 }}>
+                    <Typography color="text.secondary">
+                        No income or expense entries found. Add entries from the Income and Expense pages.
+                    </Typography>
+                </Paper>
+            )}
 
             {/* Income Section */}
-            <Paper elevation={0} sx={{ borderRadius: 0.5, mb: 2 }}>
-                <Box
-                    sx={{
-                        backgroundColor: PURPLE,
-                        color: "#fff",
-                        px: 3,
-                        py: 1.5,
-                        borderTopLeftRadius: 6,
-                        borderBottomLeftRadius: 6,
-                        borderTopRightRadius: 6,
-                        borderBottomRightRadius: 6,
-                    }}
-                >
-                    <Typography fontWeight={600}>Income</Typography>
-                </Box>
-
-                <Box p={3}>
-                    {filteredIncome.map((item) => (
-                        <Box
-                            key={item.id}
-                            display="flex"
-                            justifyContent="space-between"
-                            mb={1}
-                        >
-                            <Typography>{item.title}</Typography>
-                            <Typography>Rs. {item.amount.toLocaleString()}/-</Typography>
-                        </Box>
-                    ))}
-
-                    <Divider sx={{ my: 2 }} />
-
-                    <Box display="flex" justifyContent="space-between">
-                        <Typography fontWeight={600}>Total Income</Typography>
-                        <Typography fontWeight={600}>
-                            Rs. {totalIncome.toLocaleString()}/-
-                        </Typography>
+            {filteredIncome.length > 0 && (
+                <Paper elevation={0} sx={{ borderRadius: 0.5, mb: 2 }}>
+                    <Box sx={{ backgroundColor: PURPLE, color: "#fff", px: 3, py: 1.5, borderRadius: "6px 6px 0 0" }}>
+                        <Typography fontWeight={600}>Income</Typography>
                     </Box>
-                </Box>
-            </Paper>
+                    <Box p={3}>
+                        {filteredIncome.map((item, idx) => (
+                            <Box key={idx} display="flex" justifyContent="space-between" mb={1} alignItems="center">
+                                <Box>
+                                    <Typography>{item.customerName || item.accountHead || "—"}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {item.accountHead} &bull; {item.paymentMethod} &bull; {item.date}
+                                    </Typography>
+                                </Box>
+                                <Typography fontWeight={500} color="green">
+                                    Rs. {Number(item.amount || 0).toLocaleString()}/-
+                                </Typography>
+                            </Box>
+                        ))}
+                        <Divider sx={{ my: 2 }} />
+                        <Box display="flex" justifyContent="space-between">
+                            <Typography fontWeight={600}>Total Income</Typography>
+                            <Typography fontWeight={600} color="green">Rs. {totalIncome.toLocaleString()}/-</Typography>
+                        </Box>
+                    </Box>
+                </Paper>
+            )}
 
             {/* Expense Section */}
-            <Paper elevation={0} sx={{ borderRadius: 0.5 }}>
-                <Box
-                    sx={{
-                        backgroundColor: PURPLE,
-                        color: "#fff",
-                        px: 3,
-                        py: 1.5,
-                        borderTopLeftRadius: 6,
-                        borderBottomLeftRadius: 6,
-                        borderTopRightRadius: 6,
-                        borderBottomRightRadius: 6,
-                    }}
-                >
-                    <Typography fontWeight={600}>Expense</Typography>
-                </Box>
-
-                <Box p={3}>
-                    {filteredExpense.map((item) => (
-                        <Box
-                            key={item.id}
-                            display="flex"
-                            justifyContent="space-between"
-                            mb={1}
-                        >
-                            <Typography>{item.title}</Typography>
-                            <Typography>Rs. {item.amount.toLocaleString()}/-</Typography>
+            {filteredExpense.length > 0 && (
+                <Paper elevation={0} sx={{ borderRadius: 0.5 }}>
+                    <Box sx={{ backgroundColor: PURPLE, color: "#fff", px: 3, py: 1.5, borderRadius: "6px 6px 0 0" }}>
+                        <Typography fontWeight={600}>Expense</Typography>
+                    </Box>
+                    <Box p={3}>
+                        {filteredExpense.map((item, idx) => (
+                            <Box key={idx} display="flex" justifyContent="space-between" mb={1} alignItems="center">
+                                <Box>
+                                    <Typography>{item.customerName || item.accountHead || "—"}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {item.accountHead} &bull; {item.paymentMethod} &bull; {item.date}
+                                    </Typography>
+                                </Box>
+                                <Typography fontWeight={500} color="error">
+                                    Rs. {Number(item.amount || 0).toLocaleString()}/-
+                                </Typography>
+                            </Box>
+                        ))}
+                        <Divider sx={{ my: 2 }} />
+                        <Box display="flex" justifyContent="space-between" mb={2}>
+                            <Typography fontWeight={600}>Total Expense</Typography>
+                            <Typography fontWeight={600} color="error">Rs. {totalExpense.toLocaleString()}/-</Typography>
                         </Box>
-                    ))}
 
-                    <Divider sx={{ my: 2 }} />
+                        <Divider />
 
-                    <Box display="flex" justifyContent="space-between" mb={2}>
-                        <Typography fontWeight={600}>Total Expense</Typography>
-                        <Typography fontWeight={600}>
-                            Rs. {totalExpense.toLocaleString()}/-
-                        </Typography>
+                        <Box display="flex" justifyContent="space-between" mt={2} alignItems="center">
+                            <Typography fontWeight={700} color={grossProfit >= 0 ? "green" : "error"}>
+                                {grossProfit >= 0 ? "Gross Profit" : "Net Loss"}
+                            </Typography>
+                            <Chip
+                                label={`Rs. ${Math.abs(grossProfit).toLocaleString()}/-`}
+                                color={grossProfit >= 0 ? "success" : "error"}
+                                sx={{ fontWeight: 700, fontSize: "0.95rem" }}
+                            />
+                        </Box>
                     </Box>
+                </Paper>
+            )}
 
-                    <Divider />
-
-                    <Box display="flex" justifyContent="space-between" mt={2}>
-                        <Typography fontWeight={700} color="green">
-                            Gross Profit
-                        </Typography>
-                        <Typography fontWeight={700} color="green">
-                            Rs. {grossProfit.toLocaleString()}/-
-                        </Typography>
+            {/* Show profit summary even if only one section has data */}
+            {hasData && filteredExpense.length === 0 && filteredIncome.length > 0 && (
+                <Paper elevation={0} sx={{ borderRadius: 0.5, mt: 1 }}>
+                    <Box p={3}>
+                        <Divider sx={{ mb: 2 }} />
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Typography fontWeight={700} color="green">Gross Profit</Typography>
+                            <Chip label={`Rs. ${grossProfit.toLocaleString()}/-`} color="success" sx={{ fontWeight: 700, fontSize: "0.95rem" }} />
+                        </Box>
                     </Box>
-                </Box>
-            </Paper>
+                </Paper>
+            )}
         </Box>
     );
 }
