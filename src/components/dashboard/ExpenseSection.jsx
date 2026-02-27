@@ -18,7 +18,7 @@ const ICONS = [
 ];
 const COLORS = ["#5C6BC0", "#26A69A", "#5C6BC0", "#26A69A"];
 
-function ExpenseCard({ title, subtitle, previousAmount, currentAmount, icon, accentColor }) {
+function ExpenseCard({ title, currentAmount, icon, accentColor }) {
   return (
     <Card
       sx={{
@@ -45,19 +45,29 @@ function ExpenseCard({ title, subtitle, previousAmount, currentAmount, icon, acc
           </Box>
 
           <Box sx={{ flex: 1 }}>
-            <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#1B0D3F", fontSize: "0.9rem" }}>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}
+            >
+              <Typography
+                variant="subtitle2"
+                sx={{ fontWeight: 700, color: "#1B0D3F", fontSize: "0.9rem" }}
+              >
                 {title}
               </Typography>
-
-              <Typography variant="caption" sx={{ color: "#999", fontSize: "0.75rem", display: "flex", flexDirection: "row-reverse" }}>
-                {subtitle}
-              </Typography>
-              <Typography variant="caption" display="block" sx={{ color: "#999", fontSize: "0.75rem", display: "flex", flexDirection: "row-reverse" }}>
-                {previousAmount}
-              </Typography>
             </Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, mt: 1, color: "#1B0D3F", fontSize: "1.05rem" }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                mt: 1,
+                color: "#1B0D3F",
+                fontSize: "1.05rem",
+              }}
+            >
               {currentAmount}
             </Typography>
           </Box>
@@ -72,9 +82,14 @@ export default function ExpenseSection() {
   const { getExpenseSummary } = useContext(DataContext);
 
   return (
-    <Card sx={{ borderRadius: 1, flex: { xs: "1 1 100%", md: 1 }, minWidth: 0 }}>
+    <Card
+      sx={{ borderRadius: 1, flex: { xs: "1 1 100%", md: 1 }, minWidth: 0 }}
+    >
       <CardContent sx={{ p: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: "#1B0D3F", fontSize: "1.2rem" }}>
+        <Typography
+          variant="h6"
+          sx={{ fontWeight: 700, mb: 2, color: "#1B0D3F", fontSize: "1.2rem" }}
+        >
           Expense
         </Typography>
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, width: "100%" }}>
@@ -82,8 +97,6 @@ export default function ExpenseSection() {
             <ExpenseCard
               key={item.period}
               title={item.period}
-              subtitle={item.label}
-              previousAmount={item.previous}
               currentAmount={item.current}
               icon={ICONS[idx]}
               accentColor={COLORS[idx]}

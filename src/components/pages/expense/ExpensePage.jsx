@@ -50,7 +50,7 @@ const ExpensePage = () => {
       customerName: formData.customerName || "",
       accountHead: formData.accountHead || "",
       paymentMethod: formData.paymentMethod || "",
-      date: new Date().toLocaleDateString(),
+      date: new Date().toISOString().split("T")[0],
       status: "Invoiced",
       amount: Number(formData.amount || 0),
     };
@@ -140,8 +140,8 @@ const ExpensePage = () => {
             options={[
               ...new Set([
                 ...expenses.map((item) => item.customerName),
-                ...customers.map((c) => c.customerName)
-              ])
+                ...customers.map((c) => c.customerName),
+              ]),
             ].map((name) => ({
               label: name,
               value: name,
@@ -151,12 +151,12 @@ const ExpensePage = () => {
             label="Account Head"
             value={accountHead}
             onChange={(e) => setAccountHead(e.target.value)}
-            options={[
-              ...new Set(expenses.map((item) => item.accountHead)),
-            ].map((name) => ({
-              label: name,
-              value: name,
-            }))}
+            options={[...new Set(expenses.map((item) => item.accountHead))].map(
+              (name) => ({
+                label: name,
+                value: name,
+              }),
+            )}
           />
           <GenericDateField
             value={searchDate}
@@ -180,9 +180,9 @@ const ExpensePage = () => {
 
       <GenericTable
         columns={tableColumns}
-        data={filteredData.map(item => ({
+        data={filteredData.map((item) => ({
           ...item,
-          amount: formatCurrency(item.amount)
+          amount: formatCurrency(item.amount),
         }))}
         emptyMessage="No expense entries found"
         onRowClick={handleRowClick}
@@ -194,35 +194,42 @@ const ExpensePage = () => {
         title={modalMode === "add" ? "Add Expense Detail" : "Expense Detail"}
         mode={modalMode}
         columns={2}
-        showAddFileButton={modalMode === "add"}
+        // showAddFileButton={modalMode === "add"}
+        showFileUpload={modalMode === "add"}
         selectedRow={selectedRow}
         onSubmit={handleAddExpense}
         fields={
           modalMode === "add"
             ? [
-              { id: "customerName", label: "Customer Name", type: "select", options: customers.map(c => c.customerName) },
-              { id: "accountHead", label: "Account Head" },
-              {
-                id: "paymentMethod",
-                label: "Payment Method",
-                placeHolder: "Select payment method",
-                type: "select",
-                options: paymentOptions,
-              },
-              { id: "amount", label: "Amount" },
-              {
-                id: "description",
-                label: "Description",
-                type: "textarea",
-                rows: 2,
-              },
-            ]
+                {
+                  id: "customerName",
+                  label: "Customer Name",
+                  type: "select",
+                  options: customers.map((c) => c.customerName),
+                },
+                { id: "accountHead", label: "Account Head" },
+                {
+                  id: "paymentMethod",
+                  label: "Payment Method",
+                  placeHolder: "Select payment method",
+                  type: "select",
+                  options: paymentOptions,
+                },
+                { id: "amount", label: "Amount" },
+                {
+                  id: "description",
+                  label: "Description",
+                  type: "textarea",
+                  rows: 2,
+                  fullWidth: true,
+                },
+              ]
             : [
-              { id: "customerName", label: "Customer Name" },
-              { id: "accountHead", label: "Account Head" },
-              { id: "paymentMethod", label: "Payment Method" },
-              { id: "date", label: "Date" },
-            ]
+                { id: "customerName", label: "Customer Name" },
+                { id: "accountHead", label: "Account Head" },
+                { id: "paymentMethod", label: "Payment Method" },
+                { id: "date", label: "Date" },
+              ]
         }
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}

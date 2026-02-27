@@ -1,6 +1,13 @@
 import { useState, useContext } from "react";
 import Box from "@mui/material/Box";
-import { Button, Typography, IconButton, Collapse, useTheme, useMediaQuery } from "@mui/material";
+import {
+  Button,
+  Typography,
+  IconButton,
+  Collapse,
+  useTheme,
+  useMediaQuery,
+} from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { Add, FilterList, Edit } from "@mui/icons-material";
@@ -28,7 +35,7 @@ const ProjectsPage = () => {
       // Edit existing project
       updateProject(editingProjectIndex, {
         ...projects[editingProjectIndex],
-        name: formData.projectName
+        name: formData.projectName,
       });
     } else {
       // Create new project
@@ -43,8 +50,8 @@ const ProjectsPage = () => {
     setIsModalOpen(true);
   };
 
-  const filteredProjects = projects.filter(proj =>
-    proj.name.toLowerCase().includes(searchName.toLowerCase())
+  const filteredProjects = projects.filter((proj) =>
+    proj.name.toLowerCase().includes(searchName.toLowerCase()),
   );
 
   return (
@@ -72,7 +79,7 @@ const ProjectsPage = () => {
           }}
           sx={{
             backgroundColor: "#1B0D3F",
-            "&:hover": { backgroundColor: "#2D1B69" }
+            "&:hover": { backgroundColor: "#2D1B69" },
           }}
         >
           Add
@@ -96,7 +103,10 @@ const ProjectsPage = () => {
             label="Project Name"
             value={searchName}
             onChange={(e) => setSearchName(e?.target?.value ?? e)}
-            options={projects.map((proj) => ({ label: proj.name, value: proj.name }))}
+            options={projects.map((proj) => ({
+              label: proj.name,
+              value: proj.name,
+            }))}
           />
 
           <Button
@@ -105,7 +115,7 @@ const ProjectsPage = () => {
             sx={{
               borderRadius: 0.5,
               backgroundColor: "#1B0D3F",
-              "&:hover": { backgroundColor: "#2D1B69" }
+              "&:hover": { backgroundColor: "#2D1B69" },
             }}
           >
             Search
@@ -154,7 +164,10 @@ const ProjectsPage = () => {
           {
             id: "projectName",
             label: "Project Name",
-            defaultValue: editingProjectIndex !== null ? projects[editingProjectIndex]?.name : "",
+            defaultValue:
+              editingProjectIndex !== null
+                ? projects[editingProjectIndex]?.name
+                : "",
           },
         ]}
       />

@@ -21,6 +21,7 @@ const accountModalFields = [
     type: "text",
     placeholder: "Enter account name",
     required: true,
+    fullWidth: true,
   },
   {
     id: "accountType",

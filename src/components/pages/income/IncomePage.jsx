@@ -126,6 +126,15 @@ export default function IncomePage() {
             borderRadius: isMobile ? 1 : 0,
           }}
         >
+          {/* <GenericSelectField
+            label="Customer Name"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            options={customers.map((c) => ({
+              label: c.customerName,
+              value: c.customerName,
+            }))}
+          /> */}
           <GenericSelectField
             label="Customer Name"
             value={customerName}
@@ -133,8 +142,8 @@ export default function IncomePage() {
             options={[
               ...new Set([
                 ...income.map((item) => item.customerName),
-                ...customers.map((c) => c.customerName)
-              ])
+                ...customers.map((c) => c.customerName),
+              ]),
             ].map((name) => ({
               label: name,
               value: name,
@@ -144,12 +153,12 @@ export default function IncomePage() {
             label="Account Head"
             value={accountHead}
             onChange={(e) => setAccountHead(e.target.value)}
-            options={[
-              ...new Set(income.map((item) => item.accountHead)),
-            ].map((name) => ({
-              label: name,
-              value: name,
-            }))}
+            options={[...new Set(income.map((item) => item.accountHead))].map(
+              (name) => ({
+                label: name,
+                value: name,
+              }),
+            )}
           />
           <GenericDateField
             value={searchDate}
@@ -173,9 +182,9 @@ export default function IncomePage() {
 
       <GenericTable
         columns={tableColumns}
-        data={filteredData.map(item => ({
+        data={filteredData.map((item) => ({
           ...item,
-          amount: formatCurrency(item.amount)
+          amount: formatCurrency(item.amount),
         }))}
         emptyMessage="No income entries found"
         onRowClick={(row) => {
@@ -193,31 +202,38 @@ export default function IncomePage() {
         showAddFileButton={modalMode === "add"}
         selectedRow={selectedRow}
         onSubmit={handleAddIncome}
+        showFileUpload={modalMode === "add"}
         fields={
           modalMode === "add"
             ? [
-              { id: "customerName", label: "Customer Name", type: "select", options: customers.map(c => c.customerName) },
-              { id: "accountHead", label: "Account Head" },
-              {
-                id: "paymentMethod",
-                label: "Payment Method",
-                type: "select",
-                options: paymentOptions,
-              },
-              { id: "amount", label: "Amount" },
-              {
-                id: "description",
-                label: "Description",
-                type: "textarea",
-                rows: 2,
-              },
-            ]
+                {
+                  id: "customerName",
+                  label: "Customer Name",
+                  type: "select",
+                  options: customers.map((c) => c.customerName),
+                },
+                { id: "accountHead", label: "Account Head" },
+                {
+                  id: "paymentMethod",
+                  label: "Payment Method",
+                  type: "select",
+                  options: paymentOptions,
+                },
+                { id: "amount", label: "Amount" },
+                {
+                  id: "description",
+                  label: "Description",
+                  type: "textarea",
+                  rows: 2,
+                  fullWidth: true,
+                },
+              ]
             : [
-              { id: "customerName", label: "Customer Name" },
-              { id: "accountHead", label: "Account Head" },
-              { id: "paymentMethod", label: "Payment Method" },
-              { id: "date", label: "Date" },
-            ]
+                { id: "customerName", label: "Customer Name" },
+                { id: "accountHead", label: "Account Head" },
+                { id: "paymentMethod", label: "Payment Method" },
+                { id: "date", label: "Date" },
+              ]
         }
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}

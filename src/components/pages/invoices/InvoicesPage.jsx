@@ -36,7 +36,14 @@ const tableColumns = [
 const statusOptions = ["All", "Invoiced", "Paid", "Pending"];
 
 export default function InvoicesPage() {
-  const { invoices, addInvoice, customers, vendors, totalPaidInvoices, totalPendingInvoices } = useContext(DataContext);
+  const {
+    invoices,
+    addInvoice,
+    customers,
+    vendors,
+    totalPaidInvoices,
+    totalPendingInvoices,
+  } = useContext(DataContext);
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
@@ -45,8 +52,24 @@ export default function InvoicesPage() {
   const [type, setType] = useState("");
   const [entityType, setEntityType] = useState("");
   const [searchDate, setSearchDate] = useState("");
-  const [modalMode, setModalMode] = useState("add"); // "add" | "selection" | "detail-actions"
+  const [modalMode, setModalMode] = useState("add"); // "add" | "selection" | "detail-actions" | "receivable-step1" | "receivable-step2"
   const [selectedType, setSelectedType] = useState(""); // Store selected type from Green/Red buttons
+  const [receivableData, setReceivableData] = useState({
+    customer: "",
+    dueDate: "",
+    amount: "",
+    discount: "",
+    reference: "",
+    grandTotal: "",
+  });
+  const [payableData, setPayableData] = useState({
+    vendor: "",
+    dueDate: "",
+    amount: "",
+    discount: "",
+    reference: "",
+    grandTotal: "",
+  });
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -67,6 +90,18 @@ export default function InvoicesPage() {
     };
     addInvoice(newEntry);
     setIsModalOpen(false);
+    resetReceivableData();
+  };
+
+  const resetPayableData = () => {
+    setPayableData({
+      customer: "",
+      dueDate: "",
+      amount: "",
+      description: "",
+      reference: "",
+      taxAble: "",
+    });
   };
 
   const formatCurrency = (amount) => {
@@ -75,7 +110,91 @@ export default function InvoicesPage() {
 
   const handleTypeSelect = (type) => {
     setSelectedType(type);
-    setModalMode("add");
+    if (type === "Receivable") {
+      setModalMode("receivable-step1");
+    } else if (type === "Payable") {
+      setModalMode("payable-step1");
+    } else {
+      // setModalMode("add");
+      console.log("unable to open modal for type:", type);
+    }
+    console.log("Selected type issssss:", type);
+  };
+
+  const handleReceivableStep1Submit = (data) => {
+    setReceivableData((prev) => ({
+      ...prev,
+      customer: data.customer,
+      dueDate: data.dueDate,
+    }));
+    setModalMode("receivable-step2");
+  };
+
+  const handlePayableStep1Submit = (data) => {
+    setPayableData((prev) => ({
+      ...prev,
+      vendor: data.vendor,
+      dueDate: data.dueDate,
+    }));
+    setModalMode("payable-step2");
+  };
+
+  const handleReceivableStep2Submit = (data) => {
+    const newVoucher = String(invoices.length + 1).padStart(2, "0");
+    const customerObj = customers.find(
+      (c) => c.customerName === receivableData.customer,
+    );
+
+    const newEntry = {
+      voucher: newVoucher,
+      type: "Receivable",
+      ammount: Number(data.amount || 0),
+      entityType: "Customer",
+      entity: receivableData.customer,
+      date: receivableData.dueDate,
+      reference: data.reference || "",
+      taxAble: data.taxAble || "",
+      madeBy: "Current User",
+      status: "Pending",
+      description: data.description || "",
+    };
+
+    addInvoice(newEntry);
+    console.log("Receivable invoice created:", newEntry);
+
+    setIsModalOpen(false);
+    setModalMode("selection");
+    resetReceivableData();
+  };
+
+  const handlePayableStep2Submit = (data) => {
+    const newVoucher = String(invoices.length + 1).padStart(2, "0");
+    const vendorObj = vendors.find((v) => v.vendorName === payableData.vendor);
+
+    const newEntry = {
+      voucher: newVoucher,
+      type: "Payable",
+      ammount: Number(data.amount || 0),
+      entityType: "Vendor",
+      entity: payableData.vendor,
+      date: payableData.dueDate,
+      reference: data.reference || "",
+      taxAble: data.taxAble || "",
+      madeBy: "Current User",
+      status: "Pending",
+      description: data.description || "",
+    };
+
+    addInvoice(newEntry);
+    console.log("Payable invoice created:", newEntry);
+
+    setIsModalOpen(false);
+    setModalMode("selection");
+    resetPayableData();
+  };
+
+  const handleBackToStep1 = () => {
+    setModalMode("receivable-step1");
   };
 
   const filteredData = useMemo(() => {
@@ -118,8 +237,14 @@ export default function InvoicesPage() {
   return (
     <Box className="space-y-4">
       <Box sx={{ display: "flex", gap: 2.5, flexWrap: "wrap" }}>
-        <BalanceCards title="Paid Amount" amount={formatCurrency(totalPaidInvoices)} />
-        <BalanceCards title="Pending Amount" amount={formatCurrency(totalPendingInvoices)} />
+        <BalanceCards
+          title="Paid Amount"
+          amount={formatCurrency(totalPaidInvoices)}
+        />
+        <BalanceCards
+          title="Pending Amount"
+          amount={formatCurrency(totalPendingInvoices)}
+        />
       </Box>
 
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
@@ -179,9 +304,10 @@ export default function InvoicesPage() {
             label="Type"
             value={type}
             onChange={(e) => setType(e.target.value)}
-            options={[...new Set(invoices.map((i) => i.type))].map(
-              (val) => ({ label: val, value: val }),
-            )}
+            options={[...new Set(invoices.map((i) => i.type))].map((val) => ({
+              label: val,
+              value: val,
+            }))}
           />
           <GenericSelectField
             label="Entity Type"
@@ -231,10 +357,16 @@ export default function InvoicesPage() {
         onOpenChange={setIsModalOpen}
         title={
           modalMode === "selection"
-            ? "Select Invoice Type"
-            : modalMode === "add"
-              ? `Add ${selectedType || "Invoice"}`
-              : "Transaction Detail"
+            ? "Generate Invoice"
+            : modalMode === "receivable-step1"
+              ? "Receivable Invoice - Step 1"
+              : modalMode === "receivable-step2"
+                ? "Receivable Invoice - Step 2"
+                : modalMode === "payable-step1"
+                  ? "Payable Invoice - Step 1"
+                  : modalMode === "payable-step2"
+                    ? "Payable Invoice - Step 2"
+                    : "Transaction Details"
         }
         mode={modalMode}
         fields={[
@@ -242,19 +374,41 @@ export default function InvoicesPage() {
           { id: "ammount", label: "Amount" },
           { id: "entityType", label: "Entity Type" },
           { id: "entity", label: "Entity" },
-          { id: "reference", label: "Reference" },
-          { id: "taxAble", label: "Taxable" },
-          { id: "madeBy", label: "Made By" },
         ]}
         selectedRow={selectedRow}
         onSubmit={
-          modalMode === "selection" ? handleTypeSelect : handleAddInvoices
+          modalMode === "selection"
+            ? handleTypeSelect
+            : modalMode === "receivable-step1"
+              ? handleReceivableStep1Submit
+              : modalMode === "receivable-step2"
+                ? handleReceivableStep2Submit
+                : modalMode === "payable-step1"
+                  ? handlePayableStep1Submit
+                  : modalMode === "payable-step2"
+                    ? handlePayableStep2Submit
+                    : handleAddInvoices
         }
-        submitButtonLabel="Save Invoice"
+        submitButtonLabel={
+          modalMode === "receivable-step1" || modalMode === "payable-step1"
+            ? "Next"
+            : modalMode === "receivable-step2" || modalMode === "payable-step2"
+              ? "Create Invoice"
+              : "Save Invoice"
+        }
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}
         onSave={() => console.log("Save clicked")}
         onEdit={() => console.log("Edit clicked")}
+        customers={customers}
+        vendors={vendors} // Add this
+        receivableData={receivableData}
+        payableData={payableData}
+        onBack={
+          modalMode === "receivable-step2" || modalMode === "payable-step2"
+            ? handleBackToStep1
+            : null
+        }
       />
     </Box>
   );

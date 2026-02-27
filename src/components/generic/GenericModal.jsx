@@ -26,10 +26,11 @@ import {
   CloudUpload,
   Delete,
   InsertDriveFile,
+  ArrowBack,
 } from "@mui/icons-material";
 import GenericTable from "./GenericTable";
-// import GenericSelectField from "./GenericSelectField";
-
+import GenericSelectField from "./GenericSelectField";
+import GenericDateField from "./GenericDateField";
 // Helper function to get status color
 const getStatusColor = (status) => {
   switch (status?.toLowerCase()) {
@@ -48,7 +49,7 @@ export default function GenericModal({
   open,
   onOpenChange,
   title,
-  mode = "add", // "add" | "form" | "view" | "detail" | "detail-actions" | "selection"
+  mode = "add", // "add" | "form" | "view" | "detail" | "detail-actions" | "selection" | "receivable-step1" | "receivable-step2"
   fields = [],
   selectedRow = null,
   onSubmit,
@@ -59,10 +60,16 @@ export default function GenericModal({
   onEdit,
   showDescription = false,
   showFileUpload = false,
+  customers = [],
+  receivableData = {},
+  payableData = {},
+  onBack,
+  vendors = [],
 }) {
   const [formData, setFormData] = useState({});
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [customerName, setCustomerName] = useState("");
   const inputRef = useRef(null);
 
   // Pre-populate form data when editing
@@ -78,12 +85,48 @@ export default function GenericModal({
       });
       setFormData(initialData);
     }
-    // Clear file when modal opens/closes or row changes
+
+    // Initialize with payable data for step 1
+    if (mode === "payable-step1") {
+      setFormData({
+        customer: payableData?.vendor || "",
+        dueDate: payableData?.dueDate || "",
+      });
+    }
+
+    // Initialize with payable data for step 2
+    if (mode === "payable-step2") {
+      setFormData({
+        amount: payableData?.amount || "",
+        description: payableData?.description || "",
+        reference: payableData?.reference || "",
+        taxAble: payableData?.taxAble || "",
+      });
+    }
+
+    // Initialize with receivable data
+    if (mode === "receivable-step1") {
+      setFormData({
+        customer: receivableData?.customer || "",
+        dueDate: receivableData?.dueDate || "",
+      });
+    }
+
+    if (mode === "receivable-step2") {
+      setFormData({
+        amount: receivableData?.amount || "",
+        description: receivableData?.description || "",
+        reference: receivableData?.reference || "",
+        taxAble: receivableData?.taxAble || "",
+      });
+    }
+
+    // Clear file when modal closes
     if (!open) {
       setSelectedFile(null);
       setDragActive(false);
     }
-  }, [selectedRow, mode, fields, open]);
+  }, [selectedRow, mode, fields, open, receivableData, payableData]);
 
   const handleChange = (fieldId, value) => {
     setFormData((prev) => ({
@@ -127,22 +170,32 @@ export default function GenericModal({
   };
 
   const handleSubmit = () => {
-    // Include file in formData if present
     const finalData = { ...formData };
     if (selectedFile) {
       finalData.file = selectedFile;
     }
 
-    if (onSubmit) onSubmit(finalData);
-    setFormData({});
-    setSelectedFile(null);
-    onOpenChange(false);
+    if (onSubmit) {
+      onSubmit(finalData);
+    }
+
+    // Close modal only for final steps
+    if (mode === "receivable-step2" || mode === "payable-step2") {
+      setFormData({});
+      setSelectedFile(null);
+      onOpenChange(false);
+    }
+    // Don't close for step 1
   };
 
   const handleClose = () => {
     setFormData({});
     setSelectedFile(null);
     onOpenChange(false);
+  };
+
+  const handleBack = () => {
+    if (onBack) onBack();
   };
 
   return (
@@ -169,11 +222,18 @@ export default function GenericModal({
           bgcolor: mode === "add" || mode === "form" ? "#FFFFFF" : "#F8F7FC",
         }}
       >
-        <DialogTitle
-          sx={{ p: 0, fontWeight: 700, color: "#1B0D3F", fontSize: "1.2rem" }}
-        >
-          {title}
-        </DialogTitle>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {onBack && (
+            <IconButton onClick={handleBack} size="small" sx={{ mr: 1 }}>
+              <ArrowBack />
+            </IconButton>
+          )}
+          <DialogTitle
+            sx={{ p: 0, fontWeight: 700, color: "#1B0D3F", fontSize: "1.2rem" }}
+          >
+            {title}
+          </DialogTitle>
+        </Box>
         <IconButton onClick={handleClose} size="small">
           <Close />
         </IconButton>
@@ -256,119 +316,124 @@ export default function GenericModal({
                 )}
               {/* {showDescription &&
                 !fields.find((f) => f.id === "description") && ( */}
-              <Box>
-                <Typography
-                  variant="body2"
-                  sx={{ fontWeight: 600, mb: 0.5, color: "#1B0D3F" }}
-                >
-                  Add File
-                </Typography>
+              {showFileUpload && (
+                <Box>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 600, mb: 0.5, color: "#1B0D3F" }}
+                  >
+                    Add File
+                  </Typography>
 
-                <Box
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                  onClick={!selectedFile ? onButtonClick : undefined}
-                  sx={{
-                    border: `2px dashed ${dragActive ? "#1B0D3F" : "#BDBDBD"}`,
-                    borderRadius: 0.5,
-                    bgcolor: dragActive ? "#F0ECF9" : "#F9F9F9",
-                    p: 3,
-                    textAlign: "center",
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    minHeight: "120px",
-                    "&:hover": {
-                      borderColor: "#1B0D3F",
-                      bgcolor: "#F5F5F5",
-                    },
-                  }}
-                >
-                  <input
-                    ref={inputRef}
-                    type="file"
-                    style={{ display: "none" }}
-                    onChange={handleFileChange}
-                  />
+                  <Box
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    onClick={!selectedFile ? onButtonClick : undefined}
+                    sx={{
+                      border: `2px dashed ${dragActive ? "#1B0D3F" : "#BDBDBD"}`,
+                      borderRadius: 0.5,
+                      bgcolor: dragActive ? "#F0ECF9" : "#F9F9F9",
+                      p: 3,
+                      textAlign: "center",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      minHeight: "120px",
+                      "&:hover": {
+                        borderColor: "#1B0D3F",
+                        bgcolor: "#F5F5F5",
+                      },
+                    }}
+                  >
+                    <input
+                      ref={inputRef}
+                      type="file"
+                      style={{ display: "none" }}
+                      onChange={handleFileChange}
+                    />
 
-                  {!selectedFile ? (
-                    <>
-                      <CloudUpload
-                        sx={{ fontSize: 40, color: "#9E9E9E", mb: 1 }}
-                      />
-                      <Typography variant="body2" color="textSecondary">
-                        <Box component="span" fontWeight="bold" color="#1B0D3F">
-                          Click to upload
-                        </Box>{" "}
-                        or drag and drop
-                      </Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        SVG, PNG, JPG or GIF (max. 5MB)
-                      </Typography>
-                    </>
-                  ) : (
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 2,
-                        width: "100%",
-                        justifyContent: "space-between",
-                        px: 2,
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    {!selectedFile ? (
+                      <>
+                        <CloudUpload
+                          sx={{ fontSize: 40, color: "#9E9E9E", mb: 1 }}
+                        />
+                        <Typography variant="body2" color="textSecondary">
+                          <Box
+                            component="span"
+                            fontWeight="bold"
+                            color="#1B0D3F"
+                          >
+                            Click to upload
+                          </Box>{" "}
+                          or drag and drop
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          SVG, PNG, JPG or GIF (max. 5MB)
+                        </Typography>
+                      </>
+                    ) : (
                       <Box
                         sx={{
                           display: "flex",
                           alignItems: "center",
                           gap: 2,
+                          width: "100%",
+                          justifyContent: "space-between",
+                          px: 2,
                         }}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Box
                           sx={{
-                            bgcolor: "#E3E0E8",
-                            p: 1,
-                            borderRadius: 0.5,
                             display: "flex",
+                            alignItems: "center",
+                            gap: 2,
                           }}
                         >
-                          <InsertDriveFile sx={{ color: "#1B0D3F" }} />
-                        </Box>
-                        <Box textAlign="left">
-                          <Typography
-                            variant="body2"
-                            fontWeight={600}
-                            color="#1B0D3F"
-                            noWrap
+                          <Box
+                            sx={{
+                              bgcolor: "#E3E0E8",
+                              p: 1,
+                              borderRadius: 0.5,
+                              display: "flex",
+                            }}
                           >
-                            {selectedFile.name}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {(selectedFile.size / 1024).toFixed(1)} KB
-                          </Typography>
+                            <InsertDriveFile sx={{ color: "#1B0D3F" }} />
+                          </Box>
+                          <Box textAlign="left">
+                            <Typography
+                              variant="body2"
+                              fontWeight={600}
+                              color="#1B0D3F"
+                              noWrap
+                            >
+                              {selectedFile.name}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              {(selectedFile.size / 1024).toFixed(1)} KB
+                            </Typography>
+                          </Box>
                         </Box>
-                      </Box>
 
-                      <IconButton
-                        onClick={removeFile}
-                        sx={{
-                          color: "#D32F2F",
-                          "&:hover": { bgcolor: "#FFEBEE" },
-                        }}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Box>
-                  )}
+                        <IconButton
+                          onClick={removeFile}
+                          sx={{
+                            color: "#D32F2F",
+                            "&:hover": { bgcolor: "#FFEBEE" },
+                          }}
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Box>
+                    )}
+                  </Box>
                 </Box>
-              </Box>
-              {/* )} */}
+              )}
             </Box>
 
             <Divider sx={{ my: 1 }} />
@@ -390,6 +455,441 @@ export default function GenericModal({
                 }}
               >
                 {submitButtonLabel}
+              </Button>
+            </Box>
+          </>
+        )}
+
+        {/* ========== PAYABLE and RECEIVABLE STEP 1 ========== */}
+
+        {mode === "payable-step1" && (
+          <>
+            <Box
+              display="flex"
+              gap={2}
+              justifyContent={"center"}
+              alignItems={"center"}
+            >
+              <Box display="flex" flexDirection="column" width="45%">
+                <Typography>Customer Name</Typography>
+                {/* <GenericSelectField
+                  // label="Customer Name"
+                  value={formData.customer || ""}
+                  onChange={(e) => handleChange("customer", e.target.value)}
+                  size="small"
+                  options={customers.map((c) => ({
+                    label: c.customerName,
+                    value: c.customerName,
+                  }))}
+                /> */}
+                {/* In payable-step1 section */}
+                <GenericSelectField
+                  value={formData.customer || ""}
+                  onChange={(e) => handleChange("customer", e.target.value)}
+                  size="small"
+                  options={vendors.map((v) => ({
+                    label: v.vendorName || v.venderName, // Handle both possible property names
+                    value: v.vendorName || v.venderName,
+                  }))}
+                />
+              </Box>
+              <Box display="flex" flexDirection="column" width="45%">
+                <Typography>Due Date</Typography>
+                <GenericDateField
+                  fullWidth
+                  // type="date"
+                  value={formData.dueDate || ""}
+                  onChange={(e) => handleChange("dueDate", e.target.value)}
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 0.5,
+                      bgcolor: "white",
+                    },
+                  }}
+                />
+              </Box>
+            </Box>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Box display="flex" justifyContent="flex-end" gap={2}>
+              <Button
+                onClick={handleSubmit}
+                variant="contained"
+                disabled={!formData.customer || !formData.dueDate}
+                sx={{
+                  bgcolor: "#1B0D3F",
+                  textTransform: "none",
+                  px: 4,
+                  py: 1,
+                  mb: 2,
+                  borderRadius: 0.5,
+                  fontWeight: 600,
+                  "&:hover": { bgcolor: "#2D1B69" },
+                  "&.Mui-disabled": {
+                    bgcolor: "#BDBDBD",
+                  },
+                }}
+              >
+                Next
+              </Button>
+            </Box>
+          </>
+        )}
+        {mode === "receivable-step1" && (
+          <>
+            <Box
+              display="flex"
+              gap={2}
+              justifyContent={"center"}
+              alignItems={"center"}
+            >
+              <Box display="flex" flexDirection="column" width="45%">
+                <Typography>receivable Customer Name</Typography>
+                {/* <GenericSelectField
+                  // label="Customer Name"
+                  value={formData.customer || ""}
+                  onChange={(e) => handleChange("customer", e.target.value)}
+                  size="small"
+                  options={customers.map((c) => ({
+                    label: c.customerName,
+                    value: c.customerName,
+                  }))}
+                /> */}
+                {/* In payable-step1 section */}
+                <GenericSelectField
+                  value={formData.customer || ""}
+                  onChange={(e) => handleChange("customer", e.target.value)}
+                  size="small"
+                  options={vendors.map((v) => ({
+                    label: v.vendorName || v.venderName, // Handle both possible property names
+                    value: v.vendorName || v.venderName,
+                  }))}
+                />
+              </Box>
+              <Box display="flex" flexDirection="column" width="45%">
+                <Typography>Due Date</Typography>
+                <GenericDateField
+                  fullWidth
+                  // type="date"
+                  value={formData.dueDate || ""}
+                  onChange={(e) => handleChange("dueDate", e.target.value)}
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 0.5,
+                      bgcolor: "white",
+                    },
+                  }}
+                />
+              </Box>
+            </Box>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Box display="flex" justifyContent="flex-end" gap={2}>
+              <Button
+                onClick={handleSubmit}
+                variant="contained"
+                disabled={!formData.customer || !formData.dueDate}
+                sx={{
+                  bgcolor: "#1B0D3F",
+                  textTransform: "none",
+                  px: 4,
+                  py: 1,
+                  mb: 2,
+                  borderRadius: 0.5,
+                  fontWeight: 600,
+                  "&:hover": { bgcolor: "#2D1B69" },
+                  "&.Mui-disabled": {
+                    bgcolor: "#BDBDBD",
+                  },
+                }}
+              >
+                Next
+              </Button>
+            </Box>
+          </>
+        )}
+
+        {/* ========== PAYABLE and RECEIVABLE STEP 2 ========== */}
+        {mode === "payable-step2" && (
+          <>
+            <Box>
+              <Typography
+                variant="subtitle1"
+                color="#1B0D3F"
+                fontWeight={600}
+                mb={1}
+                ml={2}
+              >
+                Summary
+              </Typography>
+              <Box
+                display="flex"
+                gap={2}
+                justifyContent={"center"}
+                alignItems={"center"}
+              >
+                <Box display="flex" flexDirection="column" width="45%">
+                  <Typography>Sub Total</Typography>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    placeholder="Enter amount"
+                    value={formData.amount || ""}
+                    onChange={(e) => handleChange("amount", e.target.value)}
+                    size="small"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 0.5,
+                        bgcolor: "white",
+                      },
+                    }}
+                  />
+                </Box>
+
+                <Box display="flex" flexDirection="column" width="45%">
+                  <Typography>Discount</Typography>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    placeholder="Enter Discount"
+                    value={formData.discount || ""}
+                    onChange={(e) => handleChange("discount", e.target.value)}
+                    size="small"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 0.5,
+                        bgcolor: "white",
+                      },
+                    }}
+                  />
+                </Box>
+              </Box>
+            </Box>
+
+            <Box
+              display="flex"
+              gap={2}
+              justifyContent={"center"}
+              alignItems={"center"}
+              mt={1}
+            >
+              <Box display="flex" flexDirection="column" width="45%">
+                <Typography>Sub Total</Typography>
+                <TextField
+                  fullWidth
+                  type="number"
+                  placeholder="Enter reference"
+                  value={formData.reference || ""}
+                  onChange={(e) => handleChange("reference", e.target.value)}
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 0.5,
+                      bgcolor: "white",
+                    },
+                  }}
+                />
+              </Box>
+
+              <Box display="flex" flexDirection="column" width="45%">
+                <Typography>Grand Total</Typography>
+                <TextField
+                  fullWidth
+                  type="number"
+                  placeholder="Enter Grand Total"
+                  value={formData.grandTotal || ""}
+                  onChange={(e) => handleChange("grandTotal", e.target.value)}
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 0.5,
+                      bgcolor: "white",
+                    },
+                  }}
+                >
+                  <MenuItem value="Yes">Yes</MenuItem>
+                  <MenuItem value="No">No</MenuItem>
+                </TextField>
+              </Box>
+            </Box>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Box display="flex" justifyContent="flex-end" gap={2}>
+              <Button
+                onClick={() => {
+                  console.log("Preview");
+                }}
+                variant="contained"
+                disabled={!formData.amount}
+                sx={{
+                  bgcolor: "#1B0D3F",
+                  textTransform: "none",
+                  px: 4,
+                  py: 1,
+                  mb: 2,
+                  borderRadius: 0.5,
+                  fontWeight: 600,
+                  "&:hover": { bgcolor: "#2D1B69" },
+                  "&.Mui-disabled": {
+                    bgcolor: "#BDBDBD",
+                  },
+                }}
+              >
+                Preview
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                variant="contained"
+                disabled={!formData.amount}
+                sx={{
+                  bgcolor: "#1B0D3F",
+                  textTransform: "none",
+                  px: 4,
+                  py: 1,
+                  mb: 2,
+                  borderRadius: 0.5,
+                  fontWeight: 600,
+                  "&:hover": { bgcolor: "#2D1B69" },
+                  "&.Mui-disabled": {
+                    bgcolor: "#BDBDBD",
+                  },
+                }}
+              >
+                Save
+              </Button>
+            </Box>
+          </>
+        )}
+        {mode === "receivable-step2" && (
+          <>
+            <Box>
+              <Typography
+                variant="subtitle1"
+                color="#1B0D3F"
+                fontWeight={600}
+                mb={1}
+                ml={2}
+              >
+                Summary
+              </Typography>
+              <Box
+                display="flex"
+                gap={2}
+                justifyContent={"center"}
+                alignItems={"center"}
+              >
+                <Box display="flex" flexDirection="column" width="45%">
+                  <Typography>Sub Total</Typography>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    placeholder="Enter amount"
+                    value={formData.amount || ""}
+                    onChange={(e) => handleChange("amount", e.target.value)}
+                    size="small"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 0.5,
+                        bgcolor: "white",
+                      },
+                    }}
+                  />
+                </Box>
+
+                <Box display="flex" flexDirection="column" width="45%">
+                  <Typography>Discount</Typography>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    placeholder="Enter Discount"
+                    value={formData.discount || ""}
+                    onChange={(e) => handleChange("discount", e.target.value)}
+                    size="small"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 0.5,
+                        bgcolor: "white",
+                      },
+                    }}
+                  />
+                </Box>
+              </Box>
+            </Box>
+
+            <Box
+              display="flex"
+              gap={2}
+              justifyContent={"center"}
+              alignItems={"center"}
+              mt={1}
+            >
+              <Box display="flex" flexDirection="column" width="45%">
+                <Typography>Sub Total</Typography>
+                <TextField
+                  fullWidth
+                  type="number"
+                  placeholder="Enter reference"
+                  value={formData.reference || ""}
+                  onChange={(e) => handleChange("reference", e.target.value)}
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 0.5,
+                      bgcolor: "white",
+                    },
+                  }}
+                />
+              </Box>
+
+              <Box display="flex" flexDirection="column" width="45%">
+                <Typography>Grand Total</Typography>
+                <TextField
+                  fullWidth
+                  type="number"
+                  placeholder="Enter Grand Total"
+                  value={formData.grandTotal || ""}
+                  onChange={(e) => handleChange("grandTotal", e.target.value)}
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 0.5,
+                      bgcolor: "white",
+                    },
+                  }}
+                >
+                  <MenuItem value="Yes">Yes</MenuItem>
+                  <MenuItem value="No">No</MenuItem>
+                </TextField>
+              </Box>
+            </Box>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Box display="flex" justifyContent="flex-end" gap={2}>
+              <Button
+                onClick={handleSubmit}
+                variant="contained"
+                disabled={!formData.amount}
+                sx={{
+                  bgcolor: "#1B0D3F",
+                  textTransform: "none",
+                  px: 4,
+                  py: 1,
+                  mb: 2,
+                  borderRadius: 0.5,
+                  fontWeight: 600,
+                  "&:hover": { bgcolor: "#2D1B69" },
+                  "&.Mui-disabled": {
+                    bgcolor: "#BDBDBD",
+                  },
+                }}
+              >
+                Save
               </Button>
             </Box>
           </>
@@ -744,7 +1244,7 @@ export default function GenericModal({
             <Button
               variant="contained"
               fullWidth
-              onClick={() => onSubmit && onSubmit("Sales Invoice")}
+              onClick={() => onSubmit && onSubmit("Payable")}
               sx={{
                 bgcolor: "#2E7D32",
                 color: "white",
@@ -759,7 +1259,7 @@ export default function GenericModal({
             <Button
               variant="contained"
               fullWidth
-              onClick={() => onSubmit && onSubmit("Purchase Invoice")}
+              onClick={() => onSubmit && onSubmit("Receivable")}
               sx={{
                 bgcolor: "#D32F2F",
                 color: "white",
