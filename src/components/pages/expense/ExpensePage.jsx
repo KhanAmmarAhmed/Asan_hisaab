@@ -30,7 +30,7 @@ const paymentOptions = [
 ];
 
 const ExpensePage = () => {
-  const { expenses, addExpense, customers } = useContext(DataContext);
+  const { expenses, addExpense, updateExpense, customers } = useContext(DataContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [customerName, setCustomerName] = useState("");
@@ -53,10 +53,38 @@ const ExpensePage = () => {
       date: new Date().toISOString().split("T")[0],
       status: "Invoiced",
       amount: Number(formData.amount || 0),
+      description: formData.description || "",
+      file: formData.file || null,
     };
 
     addExpense(newEntry);
     setIsModalOpen(false);
+  };
+
+  const handleEditExpense = (formData) => {
+    if (!selectedRow) return;
+    const updatedEntry = {
+      ...selectedRow,
+      ...formData,
+      amount: Number(formData.amount || 0),
+      description: formData.description || "",
+      file: formData.file || selectedRow.file || null,
+    };
+    updateExpense(selectedRow.id, updatedEntry);
+    setIsModalOpen(false);
+    setSelectedRow(null);
+    setModalMode("add");
+  };
+
+  const handleCopyExpense = () => {
+    if (!selectedRow) return;
+    const { id, voucher, ...rest } = selectedRow;
+    setSelectedRow({ ...rest, id: undefined, voucher: undefined });
+    setModalMode("add");
+  };
+
+  const handleOnEdit = () => {
+    setModalMode("edit");
   };
 
   const formatCurrency = (amount) => {
@@ -84,6 +112,14 @@ const ExpensePage = () => {
     setSelectedRow(row);
     setModalMode("detail-actions");
     setIsModalOpen(true);
+  };
+
+  const handleModalClose = (open) => {
+    setIsModalOpen(open);
+    if (!open) {
+      setModalMode("add");
+      setSelectedRow(null);
+    }
   };
 
   return (
@@ -190,16 +226,15 @@ const ExpensePage = () => {
 
       <GenericModal
         open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        title={modalMode === "add" ? "Add Expense Detail" : "Expense Detail"}
+        onOpenChange={handleModalClose}
+        title={modalMode === "add" ? "Add Expense Detail" : modalMode === "edit" ? "Edit Expense Detail" : "Expense Detail"}
         mode={modalMode}
         columns={2}
-        // showAddFileButton={modalMode === "add"}
-        showFileUpload={modalMode === "add"}
+        showFileUpload={modalMode === "add" || modalMode === "edit"}
         selectedRow={selectedRow}
-        onSubmit={handleAddExpense}
+        onSubmit={modalMode === "edit" ? handleEditExpense : handleAddExpense}
         fields={
-          modalMode === "add"
+          modalMode === "add" || modalMode === "edit"
             ? [
                 {
                   id: "customerName",
@@ -229,12 +264,14 @@ const ExpensePage = () => {
                 { id: "accountHead", label: "Account Head" },
                 { id: "paymentMethod", label: "Payment Method" },
                 { id: "date", label: "Date" },
+                { id: "amount", label: "Amount" },
               ]
         }
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}
         onSave={() => console.log("Save clicked")}
-        onEdit={() => console.log("Edit clicked")}
+        onEdit={handleOnEdit}
+        onCopy={handleCopyExpense}
       />
     </Box>
   );

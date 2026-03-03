@@ -30,7 +30,7 @@ const paymentOptions = [
 ];
 
 export default function IncomePage() {
-  const { income, addIncome, customers } = useContext(DataContext);
+  const { income, addIncome, updateIncome, customers } = useContext(DataContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [customerName, setCustomerName] = useState("");
@@ -53,10 +53,38 @@ export default function IncomePage() {
       date: new Date().toISOString().split("T")[0],
       status: "Invoiced",
       amount: Number(formData.amount || 0),
+      description: formData.description || "",
+      file: formData.file || null,
     };
 
     addIncome(newEntry);
     setIsModalOpen(false);
+  };
+
+  const handleEditIncome = (formData) => {
+    if (!selectedRow) return;
+    const updatedEntry = {
+      ...selectedRow,
+      ...formData,
+      amount: Number(formData.amount || 0),
+      description: formData.description || "",
+      file: formData.file || selectedRow.file || null,
+    };
+    updateIncome(selectedRow.id, updatedEntry);
+    setIsModalOpen(false);
+    setSelectedRow(null);
+    setModalMode("add");
+  };
+
+  const handleCopyIncome = () => {
+    if (!selectedRow) return;
+    const { id, voucher, ...rest } = selectedRow;
+    setSelectedRow({ ...rest, id: undefined, voucher: undefined });
+    setModalMode("add");
+  };
+
+  const handleOnEdit = () => {
+    setModalMode("edit");
   };
   const formatCurrency = (amount) => {
     return `Rs. ${Number(amount || 0).toLocaleString()}`;
@@ -77,6 +105,14 @@ export default function IncomePage() {
       );
     });
   }, [income, customerName, accountHead, searchDate]);
+
+  const handleModalClose = (open) => {
+    setIsModalOpen(open);
+    if (!open) {
+      setModalMode("add");
+      setSelectedRow(null);
+    }
+  };
 
   return (
     <Box className="space-y-4">
@@ -195,16 +231,16 @@ export default function IncomePage() {
       />
       <GenericModal
         open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        title={modalMode === "add" ? "Add Income Detail" : "Income Detail"}
+        onOpenChange={handleModalClose}
+        title={modalMode === "add" ? "Add Income Detail" : modalMode === "edit" ? "Edit Income Detail" : "Income Detail"}
         mode={modalMode}
         columns={2}
-        showAddFileButton={modalMode === "add"}
+        showAddFileButton={modalMode === "add" || modalMode === "edit"}
         selectedRow={selectedRow}
-        onSubmit={handleAddIncome}
-        showFileUpload={modalMode === "add"}
+        onSubmit={modalMode === "edit" ? handleEditIncome : handleAddIncome}
+        showFileUpload={modalMode === "add" || modalMode === "edit"}
         fields={
-          modalMode === "add"
+          modalMode === "add" || modalMode === "edit"
             ? [
                 {
                   id: "customerName",
@@ -233,12 +269,14 @@ export default function IncomePage() {
                 { id: "accountHead", label: "Account Head" },
                 { id: "paymentMethod", label: "Payment Method" },
                 { id: "date", label: "Date" },
+                { id: "amount", label: "Amount" },
               ]
         }
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}
         onSave={() => console.log("Save clicked")}
-        onEdit={() => console.log("Edit clicked")}
+        onEdit={handleOnEdit}
+        onCopy={handleCopyIncome}
       />
     </Box>
   );

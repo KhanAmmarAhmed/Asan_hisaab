@@ -2,6 +2,15 @@ import React, { createContext, useState, useEffect, useMemo } from "react";
 
 export const DataContext = createContext();
 
+const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+const ensureId = (record) => ({
+  ...record,
+  id: record.id || generateId(),
+});
+
+const ensureIdsInArray = (records) => records.map(ensureId);
+
 // Helper to parse amount strings like "Rs. 40,000" or numbers into a numeric value
 export const parseAmount = (val) => {
   if (typeof val === "number") return val;
@@ -15,93 +24,93 @@ export const DataProvider = ({ children }) => {
   const [customers, setCustomers] = useState(() => {
     const saved = localStorage.getItem("customers");
     return saved
-      ? JSON.parse(saved)
-      : [
-          {
-            customerName: "Muhammad Usman",
-            phone: "03048973476",
-            email: "usman123@gmail.com",
-            address: "Rawalpindi",
-            date: "2024-01-10",
-          },
-          {
-            customerName: "Ehtesham Ali",
-            phone: "03157629450",
-            email: "ehteshamali@gmail.com",
-            address: "Mianwali",
-            date: "2024-01-15",
-          },
-        ];
+      ? ensureIdsInArray(JSON.parse(saved))
+      : ensureIdsInArray([
+        {
+          customerName: "Muhammad Usman",
+          phone: "03048973476",
+          email: "usman123@gmail.com",
+          address: "Rawalpindi",
+          date: "2024-01-10",
+        },
+        {
+          customerName: "Ehtesham Ali",
+          phone: "03157629450",
+          email: "ehteshamali@gmail.com",
+          address: "Mianwali",
+          date: "2024-01-15",
+        },
+      ]);
   });
 
   const [vendors, setVendors] = useState(() => {
     const saved = localStorage.getItem("vendors");
     return saved
-      ? JSON.parse(saved)
-      : [
-          {
-            venderName: "Muhammad Usman",
-            phone: "03048973476",
-            email: "usman123@gmail.com",
-            address: "Rawalpindi",
-            date: "2024-01-10",
-          },
-          {
-            venderName: "Ehtesham Ali",
-            phone: "03157629450",
-            email: "ehteshamali@gmail.com",
-            address: "Mianwali",
-            date: "2024-01-15",
-          },
-        ];
+      ? ensureIdsInArray(JSON.parse(saved))
+      : ensureIdsInArray([
+        {
+          venderName: "Muhammad Usman",
+          phone: "03048973476",
+          email: "usman123@gmail.com",
+          address: "Rawalpindi",
+          date: "2024-01-10",
+        },
+        {
+          venderName: "Ehtesham Ali",
+          phone: "03157629450",
+          email: "ehteshamali@gmail.com",
+          address: "Mianwali",
+          date: "2024-01-15",
+        },
+      ]);
   });
 
   const [projects, setProjects] = useState(() => {
     const saved = localStorage.getItem("projects");
     return saved
-      ? JSON.parse(saved)
-      : [
-          { name: "Friends It Solutions", type: "FIS - IT Company" },
-          { name: "BSB", type: "FIS - IT Company" },
-          { name: "Business Solutions", type: "FIS - IT Company" },
-        ];
+      ? ensureIdsInArray(JSON.parse(saved))
+      : ensureIdsInArray([
+        { name: "Friends It Solutions", type: "FIS - IT Company" },
+        { name: "BSB", type: "FIS - IT Company" },
+        { name: "Business Solutions", type: "FIS - IT Company" },
+      ]);
   });
 
   const [employees, setEmployees] = useState(() => {
     const saved = localStorage.getItem("employees");
     return saved
-      ? JSON.parse(saved)
-      : [
-          {
-            employeeName: "Muhammad Usman",
-            phone: "03048973476",
-            email: "usman123@gmail.com",
-            address: "Rawalpindi",
-            date: "2024-01-10",
-          },
-          {
-            employeeName: "Ehtesham Ali",
-            phone: "03157629450",
-            email: "ehteshamali@gmail.com",
-            address: "Mianwali",
-            date: "2024-01-15",
-          },
-        ];
+      ? ensureIdsInArray(JSON.parse(saved))
+      : ensureIdsInArray([
+        {
+          employeeName: "Muhammad Usman",
+          phone: "03048973476",
+          email: "usman123@gmail.com",
+          address: "Rawalpindi",
+          date: "2024-01-10",
+        },
+        {
+          employeeName: "Ehtesham Ali",
+          phone: "03157629450",
+          email: "ehteshamali@gmail.com",
+          address: "Mianwali",
+          date: "2024-01-15",
+        },
+      ]);
   });
 
   const [invoices, setInvoices] = useState(() => {
     const saved = localStorage.getItem("invoices");
-    return saved ? JSON.parse(saved) : [];
+    return saved ? ensureIdsInArray(JSON.parse(saved)) : [];
   });
 
   const [income, setIncome] = useState(() => {
     const saved = localStorage.getItem("income");
-    return saved ? JSON.parse(saved) : [];
+    return saved ? ensureIdsInArray(JSON.parse(saved)) : [];
   });
 
   const [expenses, setExpenses] = useState(() => {
     const saved = localStorage.getItem("expenses");
-    return saved ? JSON.parse(saved) : [];
+    return saved ? ensureIdsInArray(JSON.parse(saved)) : [];
   });
 
   // --- Persistence Hooks ---
@@ -116,20 +125,24 @@ export const DataProvider = ({ children }) => {
   }, [customers, vendors, projects, employees, invoices, income, expenses]);
 
   // --- Helper Actions ---
-  const addCustomer = (customer) => setCustomers((prev) => [customer, ...prev]);
-  const addVendor = (vendor) => setVendors((prev) => [vendor, ...prev]);
-  const addProject = (project) => setProjects((prev) => [...prev, project]);
+  const addCustomer = (customer) => setCustomers((prev) => [ensureId(customer), ...prev]);
+  const addVendor = (vendor) => setVendors((prev) => [ensureId(vendor), ...prev]);
+  const addProject = (project) => setProjects((prev) => [...prev, ensureId(project)]);
   const updateProject = (index, updatedProject) => {
     setProjects((prev) =>
       prev.map((p, i) => (i === index ? updatedProject : p)),
     );
   };
-  const addEmployee = (employee) => setEmployees((prev) => [employee, ...prev]);
-  const addInvoice = (invoice) => setInvoices((prev) => [invoice, ...prev]);
+  const addEmployee = (employee) => setEmployees((prev) => [ensureId(employee), ...prev]);
+  const addInvoice = (invoice) => setInvoices((prev) => [ensureId(invoice), ...prev]);
   const updateInvoice = (index, updated) =>
     setInvoices((prev) => prev.map((inv, i) => (i === index ? updated : inv)));
-  const addIncome = (entry) => setIncome((prev) => [entry, ...prev]);
-  const addExpense = (entry) => setExpenses((prev) => [entry, ...prev]);
+  const addIncome = (entry) => setIncome((prev) => [ensureId(entry), ...prev]);
+  const updateIncome = (id, updated) =>
+    setIncome((prev) => prev.map((inc, i) => (inc.id === id ? updated : inc)));
+  const addExpense = (entry) => setExpenses((prev) => [ensureId(entry), ...prev]);
+  const updateExpense = (id, updated) =>
+    setExpenses((prev) => prev.map((exp, i) => (exp.id === id ? updated : exp)));
   console.log(
     "expense:",
     expenses.map((d) => (d.amount !== undefined ? d.amount : d.ammount)),
@@ -423,8 +436,10 @@ export const DataProvider = ({ children }) => {
         updateInvoice,
         income,
         addIncome,
+        updateIncome,
         expenses,
         addExpense,
+        updateExpense,
         // Computed financials
         totalIncome,
         totalExpenses,

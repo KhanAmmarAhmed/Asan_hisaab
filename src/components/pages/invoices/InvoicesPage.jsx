@@ -33,7 +33,7 @@ const tableColumns = [
   { id: "action", label: "Action", width: "7%" },
 ];
 
-const statusOptions = ["All", "Invoiced", "Paid", "Pending"];
+const statusOptions = ["All", "Payable", "Receivable"];
 
 export default function InvoicesPage() {
   const {
@@ -41,6 +41,7 @@ export default function InvoicesPage() {
     addInvoice,
     customers,
     vendors,
+    employees,
     totalPaidInvoices,
     totalPendingInvoices,
   } = useContext(DataContext);
@@ -63,7 +64,7 @@ export default function InvoicesPage() {
     grandTotal: "",
   });
   const [payableData, setPayableData] = useState({
-    vendor: "",
+    employee: "",
     dueDate: "",
     amount: "",
     discount: "",
@@ -95,7 +96,7 @@ export default function InvoicesPage() {
 
   const resetPayableData = () => {
     setPayableData({
-      customer: "",
+      employee: "",
       dueDate: "",
       amount: "",
       description: "",
@@ -133,7 +134,7 @@ export default function InvoicesPage() {
   const handlePayableStep1Submit = (data) => {
     setPayableData((prev) => ({
       ...prev,
-      vendor: data.vendor,
+      employee: data.employee,
       dueDate: data.dueDate,
     }));
     setModalMode("payable-step2");
@@ -169,14 +170,13 @@ export default function InvoicesPage() {
 
   const handlePayableStep2Submit = (data) => {
     const newVoucher = String(invoices.length + 1).padStart(2, "0");
-    const vendorObj = vendors.find((v) => v.vendorName === payableData.vendor);
 
     const newEntry = {
       voucher: newVoucher,
       type: "Payable",
       ammount: Number(data.amount || 0),
-      entityType: "Vendor",
-      entity: payableData.vendor,
+      entityType: "Employee",
+      entity: payableData.employee,
       date: payableData.dueDate,
       reference: data.reference || "",
       taxAble: data.taxAble || "",
@@ -193,6 +193,14 @@ export default function InvoicesPage() {
     resetPayableData();
   };
 
+  const handlePreview = (formData) => {
+    const previewData = modalMode === "receivable-step2"
+      ? { ...receivableData, ...formData, type: "Receivable" }
+      : { ...payableData, ...formData, type: "Payable" };
+    setSelectedRow(previewData);
+    setModalMode("transaction-detail-actions");
+  };
+
   const handleBackToStep1 = () => {
     setModalMode("receivable-step1");
   };
@@ -201,7 +209,7 @@ export default function InvoicesPage() {
     return invoices
       .filter((item) => {
         return (
-          (selectedStatus === "All" || item.status === selectedStatus) &&
+          (selectedStatus === "All" || item.type === selectedStatus) &&
           (reference === "" ||
             item.reference?.toLowerCase().includes(reference.toLowerCase())) &&
           (type === "" ||
@@ -366,7 +374,9 @@ export default function InvoicesPage() {
                   ? "Payable Invoice - Step 1"
                   : modalMode === "payable-step2"
                     ? "Payable Invoice - Step 2"
-                    : "Transaction Details"
+                    : modalMode === "transaction-detail-actions"
+                      ? "Invoice Preview"
+                      : "Transaction Details"
         }
         mode={modalMode}
         fields={[
@@ -394,20 +404,29 @@ export default function InvoicesPage() {
             ? "Next"
             : modalMode === "receivable-step2" || modalMode === "payable-step2"
               ? "Create Invoice"
-              : "Save Invoice"
+              : modalMode === "transaction-detail-actions"
+                ? ""
+                : "Save Invoice"
         }
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}
         onSave={() => console.log("Save clicked")}
         onEdit={() => console.log("Edit clicked")}
+        onPreview={handlePreview}
         customers={customers}
-        vendors={vendors} // Add this
+        employees={employees}
+        vendors={vendors}
         receivableData={receivableData}
         payableData={payableData}
         onBack={
-          modalMode === "receivable-step2" || modalMode === "payable-step2"
-            ? handleBackToStep1
-            : null
+          modalMode === "transaction-detail-actions"
+            ? () => {
+              setModalMode(selectedRow?.type === "Receivable" ? "receivable-step2" : "payable-step2");
+              setSelectedRow(null);
+            }
+            : modalMode === "receivable-step2" || modalMode === "payable-step2"
+              ? handleBackToStep1
+              : null
         }
       />
     </Box>

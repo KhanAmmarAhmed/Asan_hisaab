@@ -27,6 +27,7 @@ import {
   Delete,
   InsertDriveFile,
   ArrowBack,
+  ContentCopy,
 } from "@mui/icons-material";
 import GenericTable from "./GenericTable";
 import GenericSelectField from "./GenericSelectField";
@@ -49,7 +50,7 @@ export default function GenericModal({
   open,
   onOpenChange,
   title,
-  mode = "add", // "add" | "form" | "view" | "detail" | "detail-actions" | "selection" | "receivable-step1" | "receivable-step2"
+  mode = "add", // "add" | "edit" | "form" | "view" | "detail" | "detail-actions" | "selection" | "receivable-step1" | "receivable-step2"
   fields = [],
   selectedRow = null,
   onSubmit,
@@ -58,6 +59,8 @@ export default function GenericModal({
   onShare,
   onSave,
   onEdit,
+  onCopy,
+  onPreview,
   showDescription = false,
   showFileUpload = false,
   customers = [],
@@ -65,16 +68,18 @@ export default function GenericModal({
   payableData = {},
   onBack,
   vendors = [],
+  employees = [],
 }) {
   const [formData, setFormData] = useState({});
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [customerName, setCustomerName] = useState("");
+  // const [customerName, setCustomerName] = useState("");
+  // const [employeeName, setEmployeeName] = useState("");
   const inputRef = useRef(null);
 
   // Pre-populate form data when editing
   useEffect(() => {
-    if (selectedRow && (mode === "add" || mode === "form")) {
+    if (selectedRow && (mode === "add" || mode === "form" || mode === "edit")) {
       const initialData = {};
       fields.forEach((field) => {
         if (field.defaultValue !== undefined) {
@@ -89,7 +94,7 @@ export default function GenericModal({
     // Initialize with payable data for step 1
     if (mode === "payable-step1") {
       setFormData({
-        customer: payableData?.vendor || "",
+        employee: payableData?.employee || "",
         dueDate: payableData?.dueDate || "",
       });
     }
@@ -97,10 +102,11 @@ export default function GenericModal({
     // Initialize with payable data for step 2
     if (mode === "payable-step2") {
       setFormData({
-        amount: payableData?.amount || "",
-        description: payableData?.description || "",
-        reference: payableData?.reference || "",
+        amount: payableData?.amount || "",      // ← Match what your form uses
+        discount: payableData?.discount || "",
+        subTotal: payableData?.subTotal || "",
         taxAble: payableData?.taxAble || "",
+        grandTotal: payableData?.grandTotal || "",
       });
     }
 
@@ -115,9 +121,10 @@ export default function GenericModal({
     if (mode === "receivable-step2") {
       setFormData({
         amount: receivableData?.amount || "",
-        description: receivableData?.description || "",
-        reference: receivableData?.reference || "",
+        discount: receivableData?.discount || "",
+        subTotal: receivableData?.subTotal || "",
         taxAble: receivableData?.taxAble || "",
+        grandTotal: receivableData?.grandTotal || "",
       });
     }
 
@@ -161,6 +168,15 @@ export default function GenericModal({
     }
   };
 
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const onButtonClick = () => {
     inputRef.current.click();
   };
@@ -169,10 +185,20 @@ export default function GenericModal({
     setSelectedFile(null);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const finalData = { ...formData };
     if (selectedFile) {
-      finalData.file = selectedFile;
+      try {
+        const base64 = await fileToBase64(selectedFile);
+        finalData.file = {
+          name: selectedFile.name,
+          type: selectedFile.type,
+          data: base64,
+        };
+      } catch (error) {
+        console.error("Error converting file to base64:", error);
+        finalData.file = selectedFile;
+      }
     }
 
     if (onSubmit) {
@@ -198,6 +224,7 @@ export default function GenericModal({
     if (onBack) onBack();
   };
 
+
   return (
     <Dialog
       open={open}
@@ -219,7 +246,7 @@ export default function GenericModal({
           alignItems: "center",
           px: 3,
           py: 2,
-          bgcolor: mode === "add" || mode === "form" ? "#FFFFFF" : "#F8F7FC",
+          bgcolor: mode === "add" || mode === "form" || mode === "edit" ? "#FFFFFF" : "#F8F7FC",
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -241,8 +268,8 @@ export default function GenericModal({
       <Divider />
 
       <DialogContent sx={{ px: 3, py: 1 }}>
-        {/* ========== ADD/FORM MODE ========== */}
-        {(mode === "add" || mode === "form") && (
+        {/* ========== ADD/FORM/EDIT MODE ========== */}
+        {(mode === "add" || mode === "form" || mode === "edit") && (
           <>
             <Grid container spacing={2}>
               {fields.map((field) => (
@@ -471,7 +498,7 @@ export default function GenericModal({
               alignItems={"center"}
             >
               <Box display="flex" flexDirection="column" width="45%">
-                <Typography>Customer Name</Typography>
+                <Typography>Employee Name</Typography>
                 {/* <GenericSelectField
                   // label="Customer Name"
                   value={formData.customer || ""}
@@ -484,12 +511,12 @@ export default function GenericModal({
                 /> */}
                 {/* In payable-step1 section */}
                 <GenericSelectField
-                  value={formData.customer || ""}
-                  onChange={(e) => handleChange("customer", e.target.value)}
+                  value={formData.employee || ""}
+                  onChange={(e) => handleChange("employee", e.target.value)}
                   size="small"
-                  options={vendors.map((v) => ({
-                    label: v.vendorName || v.venderName, // Handle both possible property names
-                    value: v.vendorName || v.venderName,
+                  options={employees.map((emp) => ({
+                    label: emp.employeeName,
+                    value: emp.employeeName,
                   }))}
                 />
               </Box>
@@ -517,7 +544,7 @@ export default function GenericModal({
               <Button
                 onClick={handleSubmit}
                 variant="contained"
-                disabled={!formData.customer || !formData.dueDate}
+                disabled={!formData.employee || !formData.dueDate}
                 sx={{
                   bgcolor: "#1B0D3F",
                   textTransform: "none",
@@ -546,25 +573,15 @@ export default function GenericModal({
               alignItems={"center"}
             >
               <Box display="flex" flexDirection="column" width="45%">
-                <Typography>receivable Customer Name</Typography>
-                {/* <GenericSelectField
-                  // label="Customer Name"
+                <Typography>Customer Name</Typography>
+
+                <GenericSelectField
                   value={formData.customer || ""}
                   onChange={(e) => handleChange("customer", e.target.value)}
                   size="small"
                   options={customers.map((c) => ({
                     label: c.customerName,
                     value: c.customerName,
-                  }))}
-                /> */}
-                {/* In payable-step1 section */}
-                <GenericSelectField
-                  value={formData.customer || ""}
-                  onChange={(e) => handleChange("customer", e.target.value)}
-                  size="small"
-                  options={vendors.map((v) => ({
-                    label: v.vendorName || v.venderName, // Handle both possible property names
-                    value: v.vendorName || v.venderName,
                   }))}
                 />
               </Box>
@@ -633,7 +650,7 @@ export default function GenericModal({
                 alignItems={"center"}
               >
                 <Box display="flex" flexDirection="column" width="45%">
-                  <Typography>Sub Total</Typography>
+                  <Typography>Amount</Typography>
                   <TextField
                     fullWidth
                     type="number"
@@ -682,9 +699,9 @@ export default function GenericModal({
                 <TextField
                   fullWidth
                   type="number"
-                  placeholder="Enter reference"
-                  value={formData.reference || ""}
-                  onChange={(e) => handleChange("reference", e.target.value)}
+                  placeholder="Enter Sub Total"
+                  value={formData.subTotal || ""}
+                  onChange={(e) => handleChange("subTotal", e.target.value)}
                   size="small"
                   sx={{
                     "& .MuiOutlinedInput-root": {
@@ -694,6 +711,27 @@ export default function GenericModal({
                   }}
                 />
               </Box>
+              <Box display="flex" flexDirection="column" width="18%">
+                <Typography>Taxable</Typography>
+
+                <TextField
+                  fullWidth
+                  select   // ✅ correct
+                  value={formData.taxAble || ""}
+                  onChange={(e) => handleChange("taxAble", e.target.value)}
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 0.5,
+                      bgcolor: "white",
+                    },
+                  }}
+                >
+                  <MenuItem value="Yes">Yes</MenuItem>
+                  <MenuItem value="No">No</MenuItem>
+                </TextField>
+              </Box>
+
 
               <Box display="flex" flexDirection="column" width="45%">
                 <Typography>Grand Total</Typography>
@@ -711,8 +749,6 @@ export default function GenericModal({
                     },
                   }}
                 >
-                  <MenuItem value="Yes">Yes</MenuItem>
-                  <MenuItem value="No">No</MenuItem>
                 </TextField>
               </Box>
             </Box>
@@ -722,7 +758,11 @@ export default function GenericModal({
             <Box display="flex" justifyContent="flex-end" gap={2}>
               <Button
                 onClick={() => {
-                  console.log("Preview");
+                  if (onPreview) {
+                    onPreview(formData);
+                  } else {
+                    console.log("Preview");
+                  }
                 }}
                 variant="contained"
                 disabled={!formData.amount}
@@ -784,7 +824,7 @@ export default function GenericModal({
                 alignItems={"center"}
               >
                 <Box display="flex" flexDirection="column" width="45%">
-                  <Typography>Sub Total</Typography>
+                  <Typography>Amount</Typography>
                   <TextField
                     fullWidth
                     type="number"
@@ -833,9 +873,9 @@ export default function GenericModal({
                 <TextField
                   fullWidth
                   type="number"
-                  placeholder="Enter reference"
-                  value={formData.reference || ""}
-                  onChange={(e) => handleChange("reference", e.target.value)}
+                  placeholder="Enter Sub Total"
+                  value={formData.subTotal || ""}
+                  onChange={(e) => handleChange("subTotal", e.target.value)}
                   size="small"
                   sx={{
                     "& .MuiOutlinedInput-root": {
@@ -862,8 +902,6 @@ export default function GenericModal({
                     },
                   }}
                 >
-                  <MenuItem value="Yes">Yes</MenuItem>
-                  <MenuItem value="No">No</MenuItem>
                 </TextField>
               </Box>
             </Box>
@@ -871,6 +909,32 @@ export default function GenericModal({
             <Divider sx={{ my: 2 }} />
 
             <Box display="flex" justifyContent="flex-end" gap={2}>
+              <Button
+                onClick={() => {
+                  if (onPreview) {
+                    onPreview(formData);
+                  } else {
+                    console.log("Preview");
+                  }
+                }}
+                variant="contained"
+                disabled={!formData.amount}
+                sx={{
+                  bgcolor: "#1B0D3F",
+                  textTransform: "none",
+                  px: 4,
+                  py: 1,
+                  mb: 2,
+                  borderRadius: 0.5,
+                  fontWeight: 600,
+                  "&:hover": { bgcolor: "#2D1B69" },
+                  "&.Mui-disabled": {
+                    bgcolor: "#BDBDBD",
+                  },
+                }}
+              >
+                Preview
+              </Button>
               <Button
                 onClick={handleSubmit}
                 variant="contained"
@@ -1028,7 +1092,35 @@ export default function GenericModal({
                   Attachment
                 </Typography>
                 {selectedRow.file || selectedRow.attachment ? (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box
+                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                    onClick={() => {
+                      const file = selectedRow.file;
+                      if (file) {
+                        if (file.data) {
+                          if (file.type?.startsWith("image/") || file.data.startsWith("data:image")) {
+                            window.open(file.data, "_blank");
+                          } else {
+                            const a = document.createElement("a");
+                            a.href = file.data;
+                            a.download = file.name;
+                            a.click();
+                          }
+                        } else if (file.type?.startsWith("image/")) {
+                          const imageUrl = URL.createObjectURL(file);
+                          window.open(imageUrl, "_blank");
+                        } else {
+                          const fileUrl = URL.createObjectURL(file);
+                          const a = document.createElement("a");
+                          a.href = fileUrl;
+                          a.download = file.name;
+                          a.click();
+                        }
+                      } else if (selectedRow.attachment) {
+                        console.log("Attachment:", selectedRow.attachment);
+                      }
+                    }}
+                  >
                     <InsertDriveFile sx={{ color: "#1B0D3F" }} />
                     <Typography
                       color="#1B0D3F"
@@ -1073,6 +1165,11 @@ export default function GenericModal({
                     icon: <Save />,
                     label: "Save",
                     onClick: onSave || (() => console.log("Save")),
+                  },
+                  {
+                    icon: <ContentCopy />,
+                    label: "Copy",
+                    onClick: onCopy || (() => console.log("Copy")),
                   },
                   {
                     icon: <Edit />,
@@ -1171,10 +1268,10 @@ export default function GenericModal({
                   Discount: {selectedRow.discount || 0}/-
                 </Typography>
                 <Typography fontWeight={600} color="#555">
-                  Tax(15%): Rs.0/-
+                  Tax(15%): Rs.{selectedRow.taxAble || "0"}/-
                 </Typography>
                 <Typography fontWeight={600} color="#555">
-                  Grand Total: /-
+                  Grand Total: Rs.{selectedRow.grandTotal || "0"}/-
                 </Typography>
               </Box>
 
