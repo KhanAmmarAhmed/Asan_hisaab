@@ -236,36 +236,36 @@ const ExpensePage = () => {
         fields={
           modalMode === "add" || modalMode === "edit"
             ? [
-                {
-                  id: "customerName",
-                  label: "Customer Name",
-                  type: "select",
-                  options: customers.map((c) => c.customerName),
-                },
-                { id: "accountHead", label: "Account Head" },
-                {
-                  id: "paymentMethod",
-                  label: "Payment Method",
-                  placeHolder: "Select payment method",
-                  type: "select",
-                  options: paymentOptions,
-                },
-                { id: "amount", label: "Amount" },
-                {
-                  id: "description",
-                  label: "Description",
-                  type: "textarea",
-                  rows: 2,
-                  fullWidth: true,
-                },
-              ]
+              {
+                id: "customerName",
+                label: "Entity Name",
+                type: "select",
+                options: customers.map((c) => c.customerName),
+              },
+              { id: "accountHead", label: "Account Head" },
+              {
+                id: "paymentMethod",
+                label: "Payment Method",
+                placeHolder: "Select payment method",
+                type: "select",
+                options: paymentOptions,
+              },
+              { id: "amount", label: "Amount" },
+              {
+                id: "description",
+                label: "Description",
+                type: "textarea",
+                rows: 2,
+                fullWidth: true,
+              },
+            ]
             : [
-                { id: "customerName", label: "Customer Name" },
-                { id: "accountHead", label: "Account Head" },
-                { id: "paymentMethod", label: "Payment Method" },
-                { id: "date", label: "Date" },
-                { id: "amount", label: "Amount" },
-              ]
+              { id: "customerName", label: "Customer Name" },
+              { id: "accountHead", label: "Account Head" },
+              { id: "paymentMethod", label: "Payment Method" },
+              { id: "date", label: "Date" },
+              { id: "amount", label: "Amount" },
+            ]
         }
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}

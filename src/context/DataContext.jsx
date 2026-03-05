@@ -143,17 +143,12 @@ export const DataProvider = ({ children }) => {
   const addExpense = (entry) => setExpenses((prev) => [ensureId(entry), ...prev]);
   const updateExpense = (id, updated) =>
     setExpenses((prev) => prev.map((exp, i) => (exp.id === id ? updated : exp)));
-  console.log(
-    "expense:",
-    expenses.map((d) => (d.amount !== undefined ? d.amount : d.ammount)),
-  );
 
   // --- Computed Financial Summaries ---
   const totalIncome = useMemo(
     () =>
       income.reduce((sum, item) => {
-        const val = item.amount !== undefined ? item.amount : item.ammount;
-        return sum + parseAmount(val);
+        return sum + parseAmount(item.amount);
       }, 0),
     [income],
   );
@@ -161,8 +156,7 @@ export const DataProvider = ({ children }) => {
   const totalExpenses = useMemo(
     () =>
       expenses.reduce((sum, item) => {
-        const val = item.amount !== undefined ? item.amount : item.ammount;
-        return sum + parseAmount(val);
+        return sum + parseAmount(item.amount);
       }, 0),
     [expenses],
   );
@@ -182,8 +176,7 @@ export const DataProvider = ({ children }) => {
             inv.type?.toLowerCase().includes("sales"),
         )
         .reduce((sum, inv) => {
-          const val = inv.ammount !== undefined ? inv.ammount : inv.amount;
-          return sum + parseAmount(val);
+          return sum + parseAmount(inv.amount);
         }, 0),
     [invoices],
   );
@@ -198,8 +191,7 @@ export const DataProvider = ({ children }) => {
             inv.type?.toLowerCase().includes("purchase"),
         )
         .reduce((sum, inv) => {
-          const val = inv.ammount !== undefined ? inv.ammount : inv.amount;
-          return sum + parseAmount(val);
+          return sum + parseAmount(inv.amount);
         }, 0),
     [invoices],
   );
@@ -209,8 +201,7 @@ export const DataProvider = ({ children }) => {
       invoices
         .filter((inv) => inv.status === "Paid")
         .reduce((sum, i) => {
-          const val = i.ammount !== undefined ? i.ammount : i.amount;
-          return sum + parseAmount(val);
+          return sum + parseAmount(i.amount);
         }, 0),
     [invoices],
   );
@@ -220,8 +211,7 @@ export const DataProvider = ({ children }) => {
       invoices
         .filter((inv) => inv.status === "Pending")
         .reduce((sum, i) => {
-          const val = i.ammount !== undefined ? i.ammount : i.amount;
-          return sum + parseAmount(val);
+          return sum + parseAmount(i.amount);
         }, 0),
     [invoices],
   );
@@ -249,8 +239,7 @@ export const DataProvider = ({ children }) => {
       const date = new Date(item.date || item.createdAt);
       if (!isNaN(date)) {
         const key = `${date.getFullYear()}-${date.getMonth()}`;
-        const val = item.amount !== undefined ? item.amount : item.ammount;
-        incomeMap[key] = (incomeMap[key] || 0) + parseAmount(val);
+        incomeMap[key] = (incomeMap[key] || 0) + parseAmount(item.amount);
       }
     });
 
@@ -258,8 +247,7 @@ export const DataProvider = ({ children }) => {
       const date = new Date(item.date || item.createdAt);
       if (!isNaN(date)) {
         const key = `${date.getFullYear()}-${date.getMonth()}`;
-        const val = item.amount !== undefined ? item.amount : item.ammount;
-        expenseMap[key] = (expenseMap[key] || 0) + parseAmount(val);
+        expenseMap[key] = (expenseMap[key] || 0) + parseAmount(item.amount);
       }
     });
 
@@ -297,8 +285,7 @@ export const DataProvider = ({ children }) => {
       if (!isNaN(date)) {
         const weekStart = getWeekStart(date);
         const key = weekStart.toISOString().split("T")[0]; // YYYY-MM-DD
-        const val = item.amount !== undefined ? item.amount : item.ammount;
-        incomeMap[key] = (incomeMap[key] || 0) + parseAmount(val);
+        incomeMap[key] = (incomeMap[key] || 0) + parseAmount(item.amount);
       }
     });
 
@@ -308,8 +295,7 @@ export const DataProvider = ({ children }) => {
       if (!isNaN(date)) {
         const weekStart = getWeekStart(date);
         const key = weekStart.toISOString().split("T")[0];
-        const val = item.amount !== undefined ? item.amount : item.ammount;
-        expenseMap[key] = (expenseMap[key] || 0) + parseAmount(val);
+        expenseMap[key] = (expenseMap[key] || 0) + parseAmount(item.amount);
       }
     });
 
@@ -363,8 +349,7 @@ export const DataProvider = ({ children }) => {
 
     const getTotal = (items) =>
       items.reduce((s, i) => {
-        const val = i.amount !== undefined ? i.amount : i.ammount;
-        return s + parseAmount(val);
+        return s + parseAmount(i.amount);
       }, 0);
 
     const filterItemsByRange = (items, from, to) =>

@@ -17,6 +17,7 @@ import { DataContext } from "@/context/DataContext";
 
 const ProjectsPage = () => {
   const { projects, addProject, updateProject } = useContext(DataContext);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProjectIndex, setEditingProjectIndex] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -25,34 +26,42 @@ const ProjectsPage = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const handleSearch = () => {
-    console.log("Search filter:", searchName);
-    // Implement search logic here if needed
-  };
-
   const handleCreateOrEditProject = (formData) => {
-    if (editingProjectIndex !== null) {
-      // Edit existing project
-      updateProject(editingProjectIndex, {
-        ...projects[editingProjectIndex],
-        name: formData.projectName,
-      });
-    } else {
-      // Create new project
-      addProject({ name: formData.projectName, type: "FIS - IT Company" });
+    const name = formData.projectName?.trim();
+    const alias = formData.projectAlias?.trim();
+    const type = formData.projectType?.trim();
+
+    // 🚨 Prevent empty values
+    if (!name || !alias || !type) {
+      return;
     }
+
+    const projectData = {
+      name,
+      alias,
+      type: `${alias} - ${type}`,
+    };
+
+    if (editingProjectIndex !== null) {
+      updateProject(editingProjectIndex, projectData);
+    } else {
+      addProject(projectData);
+    }
+
     setEditingProjectIndex(null);
     setIsModalOpen(false);
   };
 
-  const handleEdit = (index) => {
-    setEditingProjectIndex(index);
+  const handleEdit = (originalIndex) => {
+    setEditingProjectIndex(originalIndex);
     setIsModalOpen(true);
   };
 
-  const filteredProjects = projects.filter((proj) =>
-    proj.name.toLowerCase().includes(searchName.toLowerCase()),
-  );
+  const filteredProjects = projects
+    .map((project, index) => ({ ...project, originalIndex: index }))
+    .filter((proj) =>
+      proj.name?.toLowerCase().includes(searchName.toLowerCase()),
+    );
 
   return (
     <Box className="space-y-4">
@@ -111,7 +120,6 @@ const ProjectsPage = () => {
 
           <Button
             variant="contained"
-            onClick={handleSearch}
             sx={{
               borderRadius: 0.5,
               backgroundColor: "#1B0D3F",
@@ -124,33 +132,32 @@ const ProjectsPage = () => {
       </Collapse>
 
       {/* Project Cards */}
-      <Box>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 2 }}>
-          {filteredProjects.map((project, index) => (
-            <Box
-              key={index}
-              sx={{
-                p: 2,
-                borderRadius: 1,
-                backgroundColor: "#FFFFFF",
-                border: "1px solid #E0E0E0",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Box>
-                <Typography sx={{ fontWeight: 600 }}>{project.name}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {project.type}
-                </Typography>
-              </Box>
-              <IconButton onClick={() => handleEdit(index)}>
-                <Edit sx={{ color: "#1B0D3F" }} />
-              </IconButton>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 2 }}>
+        {filteredProjects.map((project) => (
+          <Box
+            key={project.originalIndex}
+            sx={{
+              p: 2,
+              borderRadius: 1,
+              backgroundColor: "#FFFFFF",
+              border: "1px solid #E0E0E0",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Box>
+              <Typography sx={{ fontWeight: 600 }}>{project.name}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {project.type}
+              </Typography>
             </Box>
-          ))}
-        </Box>
+
+            <IconButton onClick={() => handleEdit(project.originalIndex)}>
+              <Edit sx={{ color: "#1B0D3F" }} />
+            </IconButton>
+          </Box>
+        ))}
       </Box>
 
       {/* Modal */}
@@ -167,6 +174,22 @@ const ProjectsPage = () => {
             defaultValue:
               editingProjectIndex !== null
                 ? projects[editingProjectIndex]?.name
+                : "",
+          },
+          {
+            id: "projectAlias",
+            label: "Project Alias",
+            defaultValue:
+              editingProjectIndex !== null
+                ? projects[editingProjectIndex]?.alias
+                : "",
+          },
+          {
+            id: "projectType",
+            label: "Project Type",
+            defaultValue:
+              editingProjectIndex !== null
+                ? projects[editingProjectIndex]?.type
                 : "",
           },
         ]}

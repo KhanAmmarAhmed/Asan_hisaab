@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import Autocomplete from "@mui/material/Autocomplete";
 import {
   Dialog,
   DialogTitle,
@@ -18,7 +19,7 @@ import {
 import logo from "../assets/asanLogo.png";
 import {
   Close,
-  AttachFile,
+  // AttachFile,
   Print,
   Share,
   Save,
@@ -28,6 +29,7 @@ import {
   InsertDriveFile,
   ArrowBack,
   ContentCopy,
+  Add,
 } from "@mui/icons-material";
 import GenericTable from "./GenericTable";
 import GenericSelectField from "./GenericSelectField";
@@ -61,21 +63,38 @@ export default function GenericModal({
   onEdit,
   onCopy,
   onPreview,
+  onCustomChange,
   showDescription = false,
   showFileUpload = false,
   customers = [],
   receivableData = {},
   payableData = {},
   onBack,
-  vendors = [],
+  // vendors = [],
   employees = [],
+  onStepComplete,
 }) {
   const [formData, setFormData] = useState({});
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [newItem, setNewItem] = useState({ itemName: "", quantity: 1, price: 0 });
   // const [customerName, setCustomerName] = useState("");
   // const [employeeName, setEmployeeName] = useState("");
   const inputRef = useRef(null);
+
+  const handleAddItem = () => {
+    if (!newItem.itemName) return;
+    const items = formData.items || [];
+    const total = newItem.quantity * newItem.price;
+    const itemWithTotal = { ...newItem, total, id: Date.now() };
+    setFormData((prev) => ({
+      ...prev,
+      items: [...items, itemWithTotal],
+    }));
+    setNewItem({ itemName: "", quantity: 1, price: 0 });
+  };
+
+  const itemsTotal = (formData.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
 
   // Pre-populate form data when editing
   useEffect(() => {
@@ -98,11 +117,21 @@ export default function GenericModal({
         dueDate: payableData?.dueDate || "",
       });
     }
+    // Add this after your existing mode initializations
+    if (mode === "payable-step1.5") {
+      setFormData((prev) => ({
+        ...prev,
+        employee: payableData?.employee || "",
+        dueDate: payableData?.dueDate || "",
+        items: payableData?.items || [], // Preserve items if coming back
+      }));
+    }
 
     // Initialize with payable data for step 2
     if (mode === "payable-step2") {
       setFormData({
-        amount: payableData?.amount || "",      // ← Match what your form uses
+        items: payableData?.items || [],
+        // amount: payableData?.amount || "",
         discount: payableData?.discount || "",
         subTotal: payableData?.subTotal || "",
         taxAble: payableData?.taxAble || "",
@@ -136,10 +165,14 @@ export default function GenericModal({
   }, [selectedRow, mode, fields, open, receivableData, payableData]);
 
   const handleChange = (fieldId, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [fieldId]: value,
-    }));
+    if (onCustomChange) {
+      onCustomChange(fieldId, value, setFormData, formData);
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [fieldId]: value,
+      }));
+    }
   };
 
   // --- Drag and Drop Handlers ---
@@ -224,7 +257,6 @@ export default function GenericModal({
     if (onBack) onBack();
   };
 
-
   return (
     <Dialog
       open={open}
@@ -246,12 +278,25 @@ export default function GenericModal({
           alignItems: "center",
           px: 3,
           py: 2,
-          bgcolor: mode === "add" || mode === "form" || mode === "edit" ? "#FFFFFF" : "#F8F7FC",
+          bgcolor:
+            mode === "add" || mode === "form" || mode === "edit"
+              ? "#FFFFFF"
+              : "#F8F7FC",
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {onBack && (
-            <IconButton onClick={handleBack} size="small" sx={{ mr: 1 }}>
+            <IconButton
+              // onClick={handleBack}
+              onClick={() => {
+                // Preserve items when going back
+                const currentData = {
+                  ...payableData,
+                  items: formData.items || []
+                };
+                if (onBack) onBack(currentData);
+              }}
+              size="small" sx={{ mr: 1 }}>
               <ArrowBack />
             </IconButton>
           )}
@@ -280,33 +325,55 @@ export default function GenericModal({
                   >
                     {field.label}
                   </Typography>
-                  <TextField
-                    fullWidth
-                    select={field.type === "select"}
-                    multiline={field.type === "textarea"}
-                    rows={field.rows || 1}
-                    placeholder={`Enter ${field.label.toLowerCase()}`}
-                    value={formData[field.id] || field.defaultValue || ""}
-                    onChange={(e) => handleChange(field.id, e.target.value)}
-                    size="small"
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: 0.5,
-                        bgcolor: "#F9F9F9",
-                      },
-                    }}
-                  >
-                    {field.type === "select" &&
-                      field.options &&
-                      field.options.map((option) => (
-                        <MenuItem
-                          key={option.value || option}
-                          value={option.value || option}
-                        >
-                          {option.label || option}
-                        </MenuItem>
-                      ))}
-                  </TextField>
+
+                  {field.type === "select" ? (
+                    <Autocomplete
+                      freeSolo
+                      options={field.options || []}
+                      getOptionLabel={(option) =>
+                        typeof option === "string" ? option : option.label
+                      }
+                      value={formData[field.id] || field.defaultValue || ""}
+                      onChange={(event, newValue) => {
+                        handleChange(
+                          field.id,
+                          typeof newValue === "string" ? newValue : newValue?.value || ""
+                        );
+                      }}
+                      onInputChange={(event, newInputValue) => {
+                        handleChange(field.id, newInputValue);
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          size="small"
+                          placeholder={`Enter ${field.label.toLowerCase()}`}
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              borderRadius: 0.5,
+                              bgcolor: "#F9F9F9",
+                            },
+                          }}
+                        />
+                      )}
+                    />
+                  ) : (
+                    <TextField
+                      fullWidth
+                      multiline={field.type === "textarea"}
+                      rows={field.rows || 1}
+                      placeholder={`Enter ${field.label.toLowerCase()}`}
+                      value={formData[field.id] || field.defaultValue || ""}
+                      onChange={(e) => handleChange(field.id, e.target.value)}
+                      size="small"
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 0.5,
+                          bgcolor: "#F9F9F9",
+                        },
+                      }}
+                    />
+                  )}
                 </Grid>
               ))}
             </Grid>
@@ -499,17 +566,7 @@ export default function GenericModal({
             >
               <Box display="flex" flexDirection="column" width="45%">
                 <Typography>Employee Name</Typography>
-                {/* <GenericSelectField
-                  // label="Customer Name"
-                  value={formData.customer || ""}
-                  onChange={(e) => handleChange("customer", e.target.value)}
-                  size="small"
-                  options={customers.map((c) => ({
-                    label: c.customerName,
-                    value: c.customerName,
-                  }))}
-                /> */}
-                {/* In payable-step1 section */}
+
                 <GenericSelectField
                   value={formData.employee || ""}
                   onChange={(e) => handleChange("employee", e.target.value)}
@@ -524,7 +581,6 @@ export default function GenericModal({
                 <Typography>Due Date</Typography>
                 <GenericDateField
                   fullWidth
-                  // type="date"
                   value={formData.dueDate || ""}
                   onChange={(e) => handleChange("dueDate", e.target.value)}
                   size="small"
@@ -542,9 +598,172 @@ export default function GenericModal({
 
             <Box display="flex" justifyContent="flex-end" gap={2}>
               <Button
-                onClick={handleSubmit}
+                // onClick={handleSubmit}
+                onClick={() => {
+                  const step15Data = {
+                    ...payableData, // This contains step 1 data
+                    items: formData.items || [],
+                    itemsTotal: itemsTotal
+                  };
+                  if (onStepComplete) {
+                    onStepComplete(step15Data); // Pass combined data to parent
+                  }
+                  handleSubmit(); // This will call onSubmit with the data
+                }}
                 variant="contained"
                 disabled={!formData.employee || !formData.dueDate}
+                sx={{
+                  bgcolor: "#1B0D3F",
+                  textTransform: "none",
+                  px: 4,
+                  py: 1,
+                  mb: 2,
+                  borderRadius: 0.5,
+                  fontWeight: 600,
+                  "&:hover": { bgcolor: "#2D1B69" },
+                  "&.Mui-disabled": {
+                    bgcolor: "#BDBDBD",
+                  },
+                }}
+              >
+                Next
+              </Button>
+            </Box>
+          </>
+        )}
+
+        {mode === "payable-step1.5" && (
+          <>
+            <Box
+              display="flex"
+              gap={2}
+              justifyContent={"space-between"}
+              alignItems={"flex-start"}
+
+            >
+              <Box display="flex" flexDirection="column">
+                <Typography sx={{ mb: 0.5 }}>Item Name</Typography>
+                <TextField
+                  fullWidth
+                  placeholder="Enter item name"
+                  value={newItem.itemName}
+                  onChange={(e) => setNewItem({ ...newItem, itemName: e.target.value })}
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 0.5,
+                      bgcolor: "white",
+                    },
+                  }}
+                />
+              </Box>
+              <Box display="flex" flexDirection="column">
+                <Typography sx={{ mb: 0.5 }}>Quantity</Typography>
+                <TextField
+                  fullWidth
+                  type="number"
+                  placeholder="Qty"
+                  value={newItem.quantity}
+                  onChange={(e) => setNewItem({ ...newItem, quantity: Number(e.target.value) || 0 })}
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 0.5,
+                      bgcolor: "white",
+                    },
+                  }}
+                />
+              </Box>
+              <Box display="flex" flexDirection="column" >
+                <Typography sx={{ mb: 0.5 }}>Price</Typography>
+                <TextField
+                  fullWidth
+                  type="number"
+                  placeholder="Price"
+                  value={newItem.price}
+                  onChange={(e) => setNewItem({ ...newItem, price: Number(e.target.value) || 0 })}
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 0.5,
+                      bgcolor: "white",
+                    },
+                  }}
+                />
+              </Box>
+
+            </Box>
+            <Box width="100%" display="flex" justifyContent="flex-end" mt={1}>
+              <Button
+                onClick={handleAddItem}
+                variant="contained"
+                fullWidth
+                disabled={!newItem.itemName}
+                sx={{
+                  bgcolor: "#1B0D3F",
+                  textTransform: "none",
+                  py: 1,
+                  borderRadius: 0.5,
+                  fontWeight: 600,
+                  "&:hover": { bgcolor: "#2D1B69" },
+                  "&.Mui-disabled": {
+                    bgcolor: "#BDBDBD",
+                  },
+                }}
+              >
+                <Add /> Add Item
+              </Button>
+            </Box>
+
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, color: "#1B0D3F" }}>
+                Items
+              </Typography>
+              <GenericTable
+                columns={[
+                  { id: "itemName", label: "Item Name", width: "40%" },
+                  { id: "quantity", label: "Quantity", width: "20%" },
+                  { id: "price", label: "Price", width: "20%" },
+                  { id: "total", label: "Total", width: "20%" },
+                ]}
+                data={formData.items || []}
+                emptyMessage="No items added"
+              />
+              {(formData.items || []).length > 0 && (
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: "#1B0D3F" }}>
+                    Total: Rs. {itemsTotal.toLocaleString()}
+                  </Typography>
+                </Box>
+
+              )}
+            </Box>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Box display="flex" justifyContent="flex-end" gap={2}>
+              <Button
+                onClick={() => {
+                  if (onBack) onBack();
+                }}
+                variant="outlined"
+                sx={{
+                  textTransform: "none",
+                  px: 3,
+                  py: 1,
+                  mb: 2,
+                  borderRadius: 0.5,
+                  fontWeight: 600,
+                  borderColor: "#1B0D3F",
+                  color: "#1B0D3F",
+                }}
+              >
+                Back
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                variant="contained"
+                disabled={!formData.items?.length}
                 sx={{
                   bgcolor: "#1B0D3F",
                   textTransform: "none",
@@ -607,7 +826,17 @@ export default function GenericModal({
 
             <Box display="flex" justifyContent="flex-end" gap={2}>
               <Button
-                onClick={handleSubmit}
+                // onClick={handleSubmit}
+                onClick={() => {
+                  const step1Data = {
+                    customer: formData.customer,
+                    dueDate: formData.dueDate
+                  };
+                  if (onStepComplete) {
+                    onStepComplete(step1Data); // Pass step 1 data to parent
+                  }
+                  handleSubmit(); // This will call onSubmit with the data
+                }}
                 variant="contained"
                 disabled={!formData.customer || !formData.dueDate}
                 sx={{
@@ -655,9 +884,12 @@ export default function GenericModal({
                     fullWidth
                     type="number"
                     placeholder="Enter amount"
-                    value={formData.amount || ""}
+                    value={itemsTotal || formData.amount || ""}
                     onChange={(e) => handleChange("amount", e.target.value)}
                     size="small"
+                    InputProps={{
+                      readOnly: true,
+                    }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         borderRadius: 0.5,
@@ -700,7 +932,7 @@ export default function GenericModal({
                   fullWidth
                   type="number"
                   placeholder="Enter Sub Total"
-                  value={formData.subTotal || ""}
+                  value={Number(itemsTotal) - Number(formData.discount) || ""}
                   onChange={(e) => handleChange("subTotal", e.target.value)}
                   size="small"
                   sx={{
@@ -716,7 +948,7 @@ export default function GenericModal({
 
                 <TextField
                   fullWidth
-                  select   // ✅ correct
+                  select // ✅ correct
                   value={formData.taxAble || ""}
                   onChange={(e) => handleChange("taxAble", e.target.value)}
                   size="small"
@@ -732,14 +964,14 @@ export default function GenericModal({
                 </TextField>
               </Box>
 
-
               <Box display="flex" flexDirection="column" width="45%">
                 <Typography>Grand Total</Typography>
                 <TextField
                   fullWidth
                   type="number"
                   placeholder="Enter Grand Total"
-                  value={formData.grandTotal || ""}
+                  value={Number(itemsTotal) - Number(formData.discount) +
+                    (formData.taxAble === "Yes" ? (Number(itemsTotal) - Number(formData.discount)) * 0.15 : 0)}
                   onChange={(e) => handleChange("grandTotal", e.target.value)}
                   size="small"
                   sx={{
@@ -748,8 +980,7 @@ export default function GenericModal({
                       bgcolor: "white",
                     },
                   }}
-                >
-                </TextField>
+                ></TextField>
               </Box>
             </Box>
 
@@ -765,7 +996,7 @@ export default function GenericModal({
                   }
                 }}
                 variant="contained"
-                disabled={!formData.amount}
+                disabled={!formData.grandTotal}
                 sx={{
                   bgcolor: "#1B0D3F",
                   textTransform: "none",
@@ -785,7 +1016,7 @@ export default function GenericModal({
               <Button
                 onClick={handleSubmit}
                 variant="contained"
-                disabled={!formData.amount}
+                disabled={!formData.grandTotal}
                 sx={{
                   bgcolor: "#1B0D3F",
                   textTransform: "none",
@@ -886,6 +1117,26 @@ export default function GenericModal({
                 />
               </Box>
 
+              <Box display="flex" flexDirection="column" width="18%">
+                <Typography>Taxable</Typography>
+                <TextField
+                  fullWidth
+                  select
+                  value={formData.taxAble || ""}
+                  onChange={(e) => handleChange("taxAble", e.target.value)}
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 0.5,
+                      bgcolor: "white",
+                    },
+                  }}
+                >
+                  <MenuItem value="Yes">Yes</MenuItem>
+                  <MenuItem value="No">No</MenuItem>
+                </TextField>
+              </Box>
+
               <Box display="flex" flexDirection="column" width="45%">
                 <Typography>Grand Total</Typography>
                 <TextField
@@ -901,8 +1152,7 @@ export default function GenericModal({
                       bgcolor: "white",
                     },
                   }}
-                >
-                </TextField>
+                ></TextField>
               </Box>
             </Box>
 
@@ -918,7 +1168,7 @@ export default function GenericModal({
                   }
                 }}
                 variant="contained"
-                disabled={!formData.amount}
+                // disabled={!formData.grandTotal}
                 sx={{
                   bgcolor: "#1B0D3F",
                   textTransform: "none",
@@ -928,9 +1178,9 @@ export default function GenericModal({
                   borderRadius: 0.5,
                   fontWeight: 600,
                   "&:hover": { bgcolor: "#2D1B69" },
-                  "&.Mui-disabled": {
-                    bgcolor: "#BDBDBD",
-                  },
+                  // "&.Mui-disabled": {
+                  //   bgcolor: "#BDBDBD",
+                  // },
                 }}
               >
                 Preview
@@ -938,7 +1188,7 @@ export default function GenericModal({
               <Button
                 onClick={handleSubmit}
                 variant="contained"
-                disabled={!formData.amount}
+                // disabled={!formData.grandTotal}
                 sx={{
                   bgcolor: "#1B0D3F",
                   textTransform: "none",
@@ -1041,7 +1291,7 @@ export default function GenericModal({
               <Typography
                 sx={{ color: "#2E7D32", fontWeight: 700, fontSize: "1rem" }}
               >
-                {selectedRow.amount || selectedRow.ammount || "Rs. 0"}
+                {selectedRow.amount || "Rs. 0"}
               </Typography>
             </Box>
 
@@ -1098,7 +1348,10 @@ export default function GenericModal({
                       const file = selectedRow.file;
                       if (file) {
                         if (file.data) {
-                          if (file.type?.startsWith("image/") || file.data.startsWith("data:image")) {
+                          if (
+                            file.type?.startsWith("image/") ||
+                            file.data.startsWith("data:image")
+                          ) {
                             window.open(file.data, "_blank");
                           } else {
                             const a = document.createElement("a");
@@ -1213,7 +1466,6 @@ export default function GenericModal({
                     {selectedRow.date
                       ? new Date(selectedRow.date).toLocaleDateString()
                       : "N/A"}
-                    {/* {selectedRow.accountHead || "N/A"} */}
                   </Typography>
                 </Box>
               </Box>
@@ -1240,40 +1492,63 @@ export default function GenericModal({
                   my: 2,
                 }}
               >
-                <GenericTable
-                  columns={[
-                    { id: "voucher", label: "Voucher#", width: "5%" },
-                    { id: "type", label: "Type", width: "10%" },
-                    { id: "ammount", label: "Amount", width: "13%" },
-                    { id: "entityType", label: "Entity Type", width: "10%" },
-                  ]}
-                  data={selectedRow.items || selectedRow.lines || []}
-                  emptyMessage="No income entries found"
-                  onRowClick={(row) => console.log("row clicked", row)}
-                />
+                {selectedRow.items && selectedRow.items.length > 0 ? (
+                  <GenericTable
+                    columns={[
+                      { id: "itemName", label: "Item Name", width: "40%" },
+                      { id: "quantity", label: "Quantity", width: "20%" },
+                      { id: "price", label: "Price", width: "20%" },
+                      { id: "total", label: "Total", width: "20%" },
+                    ]}
+                    data={selectedRow.items}
+                    emptyMessage="No items found"
+                    onRowClick={(row) => console.log("row clicked", row)}
+                  />
+                ) : (
+                  <GenericTable
+                    columns={[
+                      { id: "voucher", label: "Voucher#", width: "5%" },
+                      { id: "type", label: "Type", width: "10%" },
+                      { id: "amount", label: "Amount", width: "13%" },
+                      { id: "entityType", label: "Entity Type", width: "10%" },
+                    ]}
+                    data={selectedRow.items || selectedRow.lines || []}
+                    emptyMessage="No income entries found"
+                    onRowClick={(row) => console.log("row clicked", row)}
+                  />
+                )}
               </Paper>
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-end",
-                  gap: 1,
-                  mb: 3,
-                }}
-              >
-                <Typography fontWeight={600} color="#555">
-                  Sub Total: {selectedRow.ammount}/-
-                </Typography>
-                <Typography fontWeight={600} color="#555">
-                  Discount: {selectedRow.discount || 0}/-
-                </Typography>
-                <Typography fontWeight={600} color="#555">
-                  Tax(15%): Rs.{selectedRow.taxAble || "0"}/-
-                </Typography>
-                <Typography fontWeight={600} color="#555">
-                  Grand Total: Rs.{selectedRow.grandTotal || "0"}/-
-                </Typography>
-              </Box>
+              {(() => {
+                const itemsSum = (selectedRow.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
+                const subTotal = selectedRow.subTotal || itemsSum || selectedRow.amount || 0;
+                const discount = selectedRow.discount || 0;
+                const taxAmount = selectedRow.taxAble === "Yes" ? Math.round(subTotal * 0.15) : 0;
+                const grandTotal = selectedRow.grandTotal || (subTotal - discount + taxAmount);
+                return (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-end",
+                      gap: 1,
+                      mb: 3,
+                    }}
+                  >
+                    <Typography fontWeight={600} color="#555">
+                      Sub Total: Rs. {subTotal}/-
+                    </Typography>
+                    <Typography fontWeight={600} color="#555">
+                      Discount: Rs.{discount}/-
+                    </Typography>
+                    <Typography fontWeight={600} color="#555">
+                      Tax(15%): Rs. {taxAmount}/-
+                    </Typography>
+                    <Typography fontWeight={600} color="#555">
+                      Grand Total: Rs. {grandTotal}/-
+                    </Typography>
+                  </Box>
+                );
+              })()}
 
               {mode === "transaction-detail-actions" && (
                 <Box

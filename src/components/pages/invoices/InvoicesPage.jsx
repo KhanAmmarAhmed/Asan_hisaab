@@ -23,7 +23,7 @@ import { DataContext } from "@/context/DataContext";
 const tableColumns = [
   { id: "voucher", label: "Voucher#", width: "5%" },
   { id: "type", label: "Type", width: "10%" },
-  { id: "ammount", label: "Amount", width: "13%" },
+  { id: "amount", label: "Amount", width: "13%" },
   { id: "entityType", label: "Entity Type", width: "10%" },
   { id: "entity", label: "Entity", width: "10%" },
   { id: "date", label: "Date", width: "10%" },
@@ -46,6 +46,7 @@ export default function InvoicesPage() {
     totalPendingInvoices,
   } = useContext(DataContext);
   const [selectedStatus, setSelectedStatus] = useState("All");
+  // const [currentStep, setCurrentStep] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -70,6 +71,10 @@ export default function InvoicesPage() {
     discount: "",
     reference: "",
     grandTotal: "",
+    description: "",
+    category: "",
+    subCategory: "",
+    items: [],
   });
 
   const theme = useTheme();
@@ -80,7 +85,7 @@ export default function InvoicesPage() {
     const newEntry = {
       voucher: newVoucher,
       type: selectedType || formData.type || "",
-      ammount: Number(formData.ammount || 0),
+      amount: Number(formData.amount || 0),
       entityType: formData.entityType || "",
       entity: formData.entity || "",
       date: new Date().toISOString().split("T")[0],
@@ -105,6 +110,23 @@ export default function InvoicesPage() {
     });
   };
 
+  const handleChange = (fieldId, value, setFormData, formData) => {
+    let updatedData = { ...formData, [fieldId]: value };
+
+    if (fieldId === "amount" || fieldId === "discount" || fieldId === "taxAble") {
+      const amount = Number(fieldId === "amount" ? value : formData.amount || 0);
+      const discount = Number(fieldId === "discount" ? value : formData.discount || 0);
+      const subTotal = amount - discount;
+      const isTaxable = fieldId === "taxAble" ? value : formData.taxAble;
+      const tax = isTaxable === "Yes" ? subTotal * 0.15 : 0;
+      const grandTotal = subTotal + tax;
+      updatedData.subTotal = subTotal;
+      updatedData.grandTotal = grandTotal;
+    }
+
+    setFormData(updatedData);
+  };
+
   const formatCurrency = (amount) => {
     return `Rs. ${Number(amount || 0).toLocaleString()}`;
   };
@@ -119,7 +141,6 @@ export default function InvoicesPage() {
       // setModalMode("add");
       console.log("unable to open modal for type:", type);
     }
-    console.log("Selected type issssss:", type);
   };
 
   const handleReceivableStep1Submit = (data) => {
@@ -136,8 +157,27 @@ export default function InvoicesPage() {
       ...prev,
       employee: data.employee,
       dueDate: data.dueDate,
+      items: prev.items || [],
+    }));
+    setModalMode("payable-step1.5");
+  };
+
+  const handlePayableStep1_5Submit = (data) => {
+    setPayableData((prev) => ({
+      ...prev,
+      description: data.description,
+      category: data.category,
+      subCategory: data.subCategory,
+      items: data.items || [],
     }));
     setModalMode("payable-step2");
+  };
+  const handleBackFromStep1_5 = (dataWithItems) => {
+    setPayableData((prev) => ({
+      ...prev,
+      ...dataWithItems, // This will preserve items when going back
+    }));
+    setModalMode("payable-step1");
   };
 
   const handleReceivableStep2Submit = (data) => {
@@ -149,12 +189,15 @@ export default function InvoicesPage() {
     const newEntry = {
       voucher: newVoucher,
       type: "Receivable",
-      ammount: Number(data.amount || 0),
+      amount: Number(data.amount || 0),
+      discount: Number(data.discount || 0),
+      subTotal: Number(data.subTotal || 0),
+      taxAble: data.taxAble || "",
+      grandTotal: Number(data.grandTotal || 0),
       entityType: "Customer",
       entity: receivableData.customer,
       date: receivableData.dueDate,
       reference: data.reference || "",
-      taxAble: data.taxAble || "",
       madeBy: "Current User",
       status: "Pending",
       description: data.description || "",
@@ -174,15 +217,21 @@ export default function InvoicesPage() {
     const newEntry = {
       voucher: newVoucher,
       type: "Payable",
-      ammount: Number(data.amount || 0),
+      amount: Number(data.amount || 0),
+      discount: Number(data.discount || 0),
+      subTotal: Number(data.subTotal || 0),
+      taxAble: data.taxAble || "",
+      grandTotal: Number(data.grandTotal || 0),
       entityType: "Employee",
       entity: payableData.employee,
       date: payableData.dueDate,
       reference: data.reference || "",
-      taxAble: data.taxAble || "",
       madeBy: "Current User",
       status: "Pending",
-      description: data.description || "",
+      description: data.description || payableData.description || "",
+      category: payableData.category || "",
+      subCategory: payableData.subCategory || "",
+      items: payableData.items || [],
     };
 
     addInvoice(newEntry);
@@ -202,7 +251,11 @@ export default function InvoicesPage() {
   };
 
   const handleBackToStep1 = () => {
-    setModalMode("receivable-step1");
+    if (selectedRow?.type === "Receivable") {
+      setModalMode("receivable-step1");
+    } else {
+      setModalMode("payable-step1.5");
+    }
   };
 
   const filteredData = useMemo(() => {
@@ -224,7 +277,7 @@ export default function InvoicesPage() {
       })
       .map((item) => ({
         ...item,
-        ammount: formatCurrency(item.ammount),
+        amount: formatCurrency(item.amount),
         action: (
           <IconButton
             onClick={(e) => {
@@ -371,17 +424,17 @@ export default function InvoicesPage() {
               : modalMode === "receivable-step2"
                 ? "Receivable Invoice - Step 2"
                 : modalMode === "payable-step1"
-                  ? "Payable Invoice - Step 1"
+                  ? "Payable Invoice"
                   : modalMode === "payable-step2"
-                    ? "Payable Invoice - Step 2"
+                    ? "Payable Invoice"
                     : modalMode === "transaction-detail-actions"
                       ? "Invoice Preview"
-                      : "Transaction Details"
+                      : "Add New Items"
         }
         mode={modalMode}
         fields={[
           { id: "type", label: "Type" },
-          { id: "ammount", label: "Amount" },
+          { id: "amount", label: "Amount" },
           { id: "entityType", label: "Entity Type" },
           { id: "entity", label: "Entity" },
         ]}
@@ -395,12 +448,16 @@ export default function InvoicesPage() {
                 ? handleReceivableStep2Submit
                 : modalMode === "payable-step1"
                   ? handlePayableStep1Submit
-                  : modalMode === "payable-step2"
-                    ? handlePayableStep2Submit
-                    : handleAddInvoices
+                  : modalMode === "payable-step1.5"
+                    ? (data) => {
+                      handlePayableStep1_5Submit(data);
+                    }
+                    : modalMode === "payable-step2"
+                      ? handlePayableStep2Submit
+                      : handleAddInvoices
         }
         submitButtonLabel={
-          modalMode === "receivable-step1" || modalMode === "payable-step1"
+          modalMode === "receivable-step1" || modalMode === "payable-step1" || modalMode === "payable-step1.5"
             ? "Next"
             : modalMode === "receivable-step2" || modalMode === "payable-step2"
               ? "Create Invoice"
@@ -426,8 +483,26 @@ export default function InvoicesPage() {
             }
             : modalMode === "receivable-step2" || modalMode === "payable-step2"
               ? handleBackToStep1
-              : null
+              : modalMode === "payable-step1.5"
+                ? handleBackFromStep1_5
+                : null
         }
+        onCustomChange={(fieldId, value, setFormData, formData) => {
+          let updatedData = { ...formData, [fieldId]: value };
+
+          if (fieldId === "amount" || fieldId === "discount" || fieldId === "taxAble") {
+            const amount = Number(fieldId === "amount" ? value : formData.amount || 0);
+            const discount = Number(fieldId === "discount" ? value : formData.discount || 0);
+            const subTotal = amount - discount;
+            const isTaxable = fieldId === "taxAble" ? value : formData.taxAble;
+            const tax = isTaxable === "Yes" ? subTotal * 0.15 : 0;
+            const grandTotal = subTotal + tax;
+            updatedData.subTotal = subTotal;
+            updatedData.grandTotal = grandTotal;
+          }
+
+          setFormData(updatedData);
+        }}
       />
     </Box>
   );
