@@ -1,39 +1,107 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Edit, Plus } from "lucide-react";
-// import Button from "@/components/generic/GenericButton";
 import GenericModal from "@/components/generic/GenericModal";
 import AccountListItem from "./AccountListItem";
 import { Button } from "@mui/material";
 import { useContext } from "react";
 import { CompanyContext } from "@/context/CompanyContext";
+import UBL from "../../assets/banksLogos/UBL.png";
+import HBL from "../../assets/banksLogos/HBL.png";
+import FaisalBank from "../../assets/banksLogos/fb.png";
+import StandardCharter from "../../assets/banksLogos/SC.png";
+import BankOfPunjab from "../../assets/banksLogos/BOP.png";
+import BankOfIslami from "../../assets/banksLogos/EP.jpg";
 
-const mockAccounts = [
-  { id: 1, name: "Cash", type: "cash", balance: "Rs. 10,000/-" },
-  { id: 2, name: "Petty Cash", type: "petty-cash", balance: "Rs. 80,000/-" },
-  { id: 3, name: "Meezan Bank", type: "bank", balance: "Rs. 20,000/-" },
-  { id: 4, name: "Alfalah Bank", type: "bank", balance: "Rs. 15,000/-" },
+const STORAGE_KEY = "cashbook_accounts";
+
+// Bank options with images
+const BANK_OPTIONS = [
+  {
+    label: "UBL",
+    value: "UBL",
+    image: UBL,
+    type: "ubl"
+  },
+  {
+    label: "HBL",
+    value: "HBL",
+    image: HBL,
+    type: "hbl"
+  },
+  {
+    label: "Faisal Bank",
+    value: "Faisal Bank",
+    image: FaisalBank,
+    type: "faisal-bank"
+  },
+  {
+    label: "Standard Charter",
+    value: "Standard Charter",
+    image: StandardCharter,
+    type: "standard-charter"
+  },
+  {
+    label: "Bank of Punjab",
+    value: "Bank of Punjab",
+    image: BankOfPunjab,
+    type: "bank-of-punjab"
+  },
+  {
+    label: "Bank of Islami",
+    value: "Bank of Islami",
+    image: BankOfIslami,
+    type: "bank-of-islami"
+  },
 ];
 
+const getInitialAccounts = () => {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return [];
+    }
+  }
+  return [
+    {
+      id: 1,
+      name: "Alfalah Bank",
+      type: "bank",
+      balance: "Rs. 15,000/-",
+      bankType: "alfalah",
+      accountNumber: "1234567890"
+    },
+  ];
+};
+
 const accountModalFields = [
+  {
+    id: "selectBank",
+    label: "Select Bank",
+    type: "select",
+    placeholder: "Select Bank",
+    options: BANK_OPTIONS.map(bank => bank.label), // Just the labels for the select
+    required: true,
+  },
   {
     id: "accountName",
     label: "Account Name",
     type: "text",
     placeholder: "Enter account name",
     required: true,
-    fullWidth: true,
   },
   {
-    id: "accountType",
-    label: "Account Type",
-    type: "select",
-    placeholder: "Select account type",
-    options: ["Cash", "Petty Cash", "Bank"],
+    id: "accountNumber",
+    label: "Account Number",
+    type: "number",
+    placeholder: "Enter account number",
     required: true,
   },
   {
     id: "balance",
-    label: "Balance",
+    label: "Initial Balance",
     type: "number",
     placeholder: "Enter balance amount",
     required: true,
@@ -41,19 +109,36 @@ const accountModalFields = [
 ];
 
 export default function CashbookPage() {
-  const [accounts, setAccounts] = useState(mockAccounts);
+  const [accounts, setAccounts] = useState(getInitialAccounts);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditingCompany, setIsEditingCompany] = useState(false);
   const { companyInfo, setCompanyInfo } = useContext(CompanyContext);
 
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+  }, [accounts]);
+
+  // Helper function to get bank details by label
+  const getBankDetails = (bankLabel) => {
+    return BANK_OPTIONS.find(bank => bank.label === bankLabel) || BANK_OPTIONS[0];
+  };
+
   const handleAddAccount = (formData) => {
     console.log("[v0] Adding new account:", formData);
+
+    const selectedBank = getBankDetails(formData.selectBank);
+
     const newAccount = {
-      id: accounts.length + 1,
+      id: Date.now(),
       name: formData.accountName,
-      type: formData.accountType.toLowerCase().replace(/\s+/g, "-"),
-      balance: `Rs. ${formData.balance}/-`,
+      bankLabel: formData.selectBank,
+      bankType: selectedBank.type,
+      bankImage: selectedBank.image,
+      type: "bank",
+      accountNumber: formData.accountNumber,
+      balance: `Rs. ${Number(formData.balance).toLocaleString()}/-`,
     };
+
     setAccounts([...accounts, newAccount]);
     setIsModalOpen(false);
   };
@@ -63,6 +148,7 @@ export default function CashbookPage() {
       name: formData.companyName,
       type: formData.companyType,
     });
+    setIsEditingCompany(false);
   };
 
   return (
@@ -70,11 +156,10 @@ export default function CashbookPage() {
       {/* Company Info Card */}
       <div className="bg-gradient-to-r from-[#1B0D3F] to-[#261758] text-white rounded-lg p-6 flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">{companyInfo.name}</h2>
-          <p className="text-sm opacity-90">{companyInfo.type}</p>
+          <h2 className="text-2xl font-bold">{companyInfo?.name || "Company Name"}</h2>
+          <p className="text-sm opacity-90">{companyInfo?.type || "Company Type"}</p>
         </div>
         <button
-          variant="contained"
           onClick={() => setIsEditingCompany(true)}
           className="p-2 hover:bg-white/10 rounded-lg transition"
           aria-label="Edit company info"
@@ -112,7 +197,11 @@ export default function CashbookPage() {
         {/* Account List */}
         <div className="space-y-2">
           {accounts.map((account, index) => (
-            <AccountListItem key={account.id} account={account} index={index} />
+            <AccountListItem
+              key={account.id}
+              account={account}
+              index={index}
+            />
           ))}
         </div>
       </div>
@@ -139,7 +228,7 @@ export default function CashbookPage() {
             type: "text",
             placeholder: "Enter company name",
             required: true,
-            defaultValue: companyInfo.name,
+            defaultValue: companyInfo?.name || "",
           },
           {
             id: "companyType",
@@ -147,7 +236,7 @@ export default function CashbookPage() {
             type: "text",
             placeholder: "Enter company type",
             required: true,
-            defaultValue: companyInfo.type,
+            defaultValue: companyInfo?.type || "",
           },
         ]}
         onSubmit={handleEditCompany}

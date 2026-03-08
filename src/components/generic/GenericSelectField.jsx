@@ -38,6 +38,15 @@ const GenericSelectField = ({
       }}
       size={size}
       fullWidth={fullWidth}
+      renderOption={(props, option, { index }) => {
+        const { key, ...restProps } = props;
+        const label = typeof option === "string" ? option : (option?.[optionLabel] ?? "");
+        return (
+          <li key={`${label}-${index}`} {...restProps}>
+            {label}
+          </li>
+        );
+      }}
       renderInput={(params) => (
         <TextField
           {...params}

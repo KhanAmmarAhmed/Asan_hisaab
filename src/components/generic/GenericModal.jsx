@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Autocomplete from "@mui/material/Autocomplete";
+// import EntitySelectWithBadges from "../../theme/EntitySelectWithBadges";
 import {
   Dialog,
   DialogTitle,
@@ -70,14 +71,18 @@ export default function GenericModal({
   receivableData = {},
   payableData = {},
   onBack,
-  // vendors = [],
+  vendors = [],
   employees = [],
   onStepComplete,
 }) {
   const [formData, setFormData] = useState({});
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [newItem, setNewItem] = useState({ itemName: "", quantity: 1, price: 0 });
+  const [newItem, setNewItem] = useState({
+    itemName: "",
+    quantity: 1,
+    price: 0,
+  });
   // const [customerName, setCustomerName] = useState("");
   // const [employeeName, setEmployeeName] = useState("");
   const inputRef = useRef(null);
@@ -94,7 +99,10 @@ export default function GenericModal({
     setNewItem({ itemName: "", quantity: 1, price: 0 });
   };
 
-  const itemsTotal = (formData.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
+  const itemsTotal = (formData.items || []).reduce(
+    (sum, item) => sum + (item.total || 0),
+    0,
+  );
 
   // Pre-populate form data when editing
   useEffect(() => {
@@ -113,7 +121,7 @@ export default function GenericModal({
     // Initialize with payable data for step 1
     if (mode === "payable-step1") {
       setFormData({
-        employee: payableData?.employee || "",
+        entity: payableData?.entity || "",
         dueDate: payableData?.dueDate || "",
       });
     }
@@ -121,7 +129,7 @@ export default function GenericModal({
     if (mode === "payable-step1.5") {
       setFormData((prev) => ({
         ...prev,
-        employee: payableData?.employee || "",
+        entity: payableData?.entity || "",
         dueDate: payableData?.dueDate || "",
         items: payableData?.items || [], // Preserve items if coming back
       }));
@@ -146,6 +154,14 @@ export default function GenericModal({
         dueDate: receivableData?.dueDate || "",
       });
     }
+    if (mode === "receivable-step1.5") {
+      setFormData((prev) => ({
+        ...prev,
+        customer: receivableData?.customer || "",
+        dueDate: receivableData?.dueDate || "",
+        items: receivableData?.items || [], // Preserve items if coming back
+      }));
+    }
 
     if (mode === "receivable-step2") {
       setFormData({
@@ -163,6 +179,23 @@ export default function GenericModal({
       setDragActive(false);
     }
   }, [selectedRow, mode, fields, open, receivableData, payableData]);
+
+  // Compute and store subTotal and grandTotal for payable-step2
+  useEffect(() => {
+    if (mode === "payable-step2") {
+      const discount = Number(formData.discount || 0);
+      const subTotal = itemsTotal - discount;
+      const tax = formData.taxAble === "Yes" ? subTotal * 0.15 : 0;
+      const grandTotal = subTotal + tax;
+
+      setFormData((prev) => ({
+        ...prev,
+        amount: itemsTotal,
+        subTotal,
+        grandTotal,
+      }));
+    }
+  }, [mode, itemsTotal, formData.discount, formData.taxAble]);
 
   const handleChange = (fieldId, value) => {
     if (onCustomChange) {
@@ -292,11 +325,13 @@ export default function GenericModal({
                 // Preserve items when going back
                 const currentData = {
                   ...payableData,
-                  items: formData.items || []
+                  items: formData.items || [],
                 };
                 if (onBack) onBack(currentData);
               }}
-              size="small" sx={{ mr: 1 }}>
+              size="small"
+              sx={{ mr: 1 }}
+            >
               <ArrowBack />
             </IconButton>
           )}
@@ -326,37 +361,56 @@ export default function GenericModal({
                     {field.label}
                   </Typography>
 
-                  {field.type === "select" ? (
-                    <Autocomplete
-                      freeSolo
-                      options={field.options || []}
-                      getOptionLabel={(option) =>
-                        typeof option === "string" ? option : option.label
-                      }
-                      value={formData[field.id] || field.defaultValue || ""}
-                      onChange={(event, newValue) => {
-                        handleChange(
-                          field.id,
-                          typeof newValue === "string" ? newValue : newValue?.value || ""
-                        );
+
+                  {field.type === "select" && field.optionsWithImages ? (
+                    <TextField
+                      select
+                      fullWidth
+                      value={formData[field.id] || ""}
+                      onChange={(e) => handleChange(field.id, e.target.value)}
+                      size="small"
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 0.5,
+                          bgcolor: "#F9F9F9",
+                        },
                       }}
-                      onInputChange={(event, newInputValue) => {
-                        handleChange(field.id, newInputValue);
+                    >
+                      {field.optionsWithImages.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            {option.image && (
+                              <img
+                                src={option.image}
+                                alt={option.label}
+                                style={{ width: 24, height: 24, objectFit: "contain" }}
+                              />
+                            )}
+                            {option.label}
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  ) : field.type === "select" ? (
+                    <TextField
+                      select
+                      fullWidth
+                      value={formData[field.id] || ""}
+                      onChange={(e) => handleChange(field.id, e.target.value)}
+                      size="small"
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 0.5,
+                          bgcolor: "#F9F9F9",
+                        },
                       }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          size="small"
-                          placeholder={`Enter ${field.label.toLowerCase()}`}
-                          sx={{
-                            "& .MuiOutlinedInput-root": {
-                              borderRadius: 0.5,
-                              bgcolor: "#F9F9F9",
-                            },
-                          }}
-                        />
-                      )}
-                    />
+                    >
+                      {field.options.map((option) => (
+                        <MenuItem key={option} value={option}>
+                          {option}
+                        </MenuItem>
+                      ))}
+                    </TextField>
                   ) : (
                     <TextField
                       fullWidth
@@ -564,17 +618,69 @@ export default function GenericModal({
               justifyContent={"center"}
               alignItems={"center"}
             >
+              {/* Inside mode === "payable-step1" */}
               <Box display="flex" flexDirection="column" width="45%">
-                <Typography>Employee Name</Typography>
-
+                <Typography>Entity Name</Typography>
                 <GenericSelectField
-                  value={formData.employee || ""}
-                  onChange={(e) => handleChange("employee", e.target.value)}
+                  value={formData.entity || ""}
+                  onChange={(e) => {
+                    const selectedValue = e.target.value;
+                    // Build a lookup array from props
+                    const allOptions = [
+                      ...customers.map(c => ({ value: c.customerName, type: 'customer' })),
+                      ...employees.map(emp => ({ value: emp.employeeName, type: 'employee' })),
+                      ...vendors.map(v => ({ value: v.venderName || v.vendorName, type: 'vendor' }))
+                    ];
+                    const selectedOption = allOptions.find(opt => opt.value === selectedValue);
+                    handleChange("entity", selectedValue);
+                    handleChange("entityCategory", selectedOption?.type || "");
+                  }}
                   size="small"
-                  options={employees.map((emp) => ({
-                    label: emp.employeeName,
-                    value: emp.employeeName,
-                  }))}
+                  options={[
+                    ...customers.map((c) => ({
+                      label: c.customerName,
+                      value: c.customerName,
+                      type: 'customer',
+                      key: `customer-${c.id || c.customerName}`
+                    })),
+                    ...employees.map((emp) => ({
+                      label: emp.employeeName,
+                      value: emp.employeeName,
+                      type: 'employee',
+                      key: `employee-${emp.id || emp.employeeName}`
+                    })),
+                    ...vendors.map((v) => ({
+                      label: v.venderName || v.vendorName,
+                      value: v.venderName || v.vendorName,
+                      type: 'vendor',
+                      key: `vendor-${v.id || v.venderName || v.vendorName}`
+                    })),
+                  ]}
+                  renderOption={(props, option) => {
+                    const { key, ...otherProps } = props;
+                    return (
+                      <li key={option.key} {...otherProps}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                          <span>{option.label}</span>
+                          <Chip
+                            label={option.type}
+                            size="small"
+                            sx={{
+                              ml: 'auto',
+                              backgroundColor:
+                                option.type === 'customer' ? '#4caf50' :
+                                  option.type === 'vendor' ? '#2196f3' : '#f44336', // employee - red
+                              color: 'white',
+                              fontWeight: 600,
+                              textTransform: 'capitalize',
+                              '& .MuiChip-label': { px: 1 }
+                            }}
+                          />
+                        </Box>
+                      </li>
+                    );
+                  }}
+                  renderValue={(selected) => selected || ""}
                 />
               </Box>
               <Box display="flex" flexDirection="column" width="45%">
@@ -602,8 +708,9 @@ export default function GenericModal({
                 onClick={() => {
                   const step15Data = {
                     ...payableData, // This contains step 1 data
-                    items: formData.items || [],
-                    itemsTotal: itemsTotal
+                    entity: formData.entity,
+                    entityCategory: formData.entityCategory,
+                    dueDate: formData.dueDate,
                   };
                   if (onStepComplete) {
                     onStepComplete(step15Data); // Pass combined data to parent
@@ -611,7 +718,7 @@ export default function GenericModal({
                   handleSubmit(); // This will call onSubmit with the data
                 }}
                 variant="contained"
-                disabled={!formData.employee || !formData.dueDate}
+                // disabled={!formData.entity || !formData.dueDate}
                 sx={{
                   bgcolor: "#1B0D3F",
                   textTransform: "none",
@@ -639,7 +746,6 @@ export default function GenericModal({
               gap={2}
               justifyContent={"space-between"}
               alignItems={"flex-start"}
-
             >
               <Box display="flex" flexDirection="column">
                 <Typography sx={{ mb: 0.5 }}>Item Name</Typography>
@@ -647,7 +753,9 @@ export default function GenericModal({
                   fullWidth
                   placeholder="Enter item name"
                   value={newItem.itemName}
-                  onChange={(e) => setNewItem({ ...newItem, itemName: e.target.value })}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, itemName: e.target.value })
+                  }
                   size="small"
                   sx={{
                     "& .MuiOutlinedInput-root": {
@@ -664,7 +772,12 @@ export default function GenericModal({
                   type="number"
                   placeholder="Qty"
                   value={newItem.quantity}
-                  onChange={(e) => setNewItem({ ...newItem, quantity: Number(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setNewItem({
+                      ...newItem,
+                      quantity: Number(e.target.value) || 0,
+                    })
+                  }
                   size="small"
                   sx={{
                     "& .MuiOutlinedInput-root": {
@@ -674,14 +787,19 @@ export default function GenericModal({
                   }}
                 />
               </Box>
-              <Box display="flex" flexDirection="column" >
+              <Box display="flex" flexDirection="column">
                 <Typography sx={{ mb: 0.5 }}>Price</Typography>
                 <TextField
                   fullWidth
                   type="number"
                   placeholder="Price"
                   value={newItem.price}
-                  onChange={(e) => setNewItem({ ...newItem, price: Number(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setNewItem({
+                      ...newItem,
+                      price: Number(e.target.value) || 0,
+                    })
+                  }
                   size="small"
                   sx={{
                     "& .MuiOutlinedInput-root": {
@@ -691,7 +809,6 @@ export default function GenericModal({
                   }}
                 />
               </Box>
-
             </Box>
             <Box width="100%" display="flex" justifyContent="flex-end" mt={1}>
               <Button
@@ -716,7 +833,10 @@ export default function GenericModal({
             </Box>
 
             <Box sx={{ mt: 3 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, color: "#1B0D3F" }}>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 600, mb: 1, color: "#1B0D3F" }}
+              >
                 Items
               </Typography>
               <GenericTable
@@ -730,12 +850,16 @@ export default function GenericModal({
                 emptyMessage="No items added"
               />
               {(formData.items || []).length > 0 && (
-                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: "#1B0D3F" }}>
+                <Box
+                  sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 600, color: "#1B0D3F" }}
+                  >
                     Total: Rs. {itemsTotal.toLocaleString()}
                   </Typography>
                 </Box>
-
               )}
             </Box>
 
@@ -830,7 +954,7 @@ export default function GenericModal({
                 onClick={() => {
                   const step1Data = {
                     customer: formData.customer,
-                    dueDate: formData.dueDate
+                    dueDate: formData.dueDate,
                   };
                   if (onStepComplete) {
                     onStepComplete(step1Data); // Pass step 1 data to parent
@@ -970,8 +1094,13 @@ export default function GenericModal({
                   fullWidth
                   type="number"
                   placeholder="Enter Grand Total"
-                  value={Number(itemsTotal) - Number(formData.discount) +
-                    (formData.taxAble === "Yes" ? (Number(itemsTotal) - Number(formData.discount)) * 0.15 : 0)}
+                  value={
+                    Number(itemsTotal) -
+                    Number(formData.discount) +
+                    (formData.taxAble === "Yes"
+                      ? (Number(itemsTotal) - Number(formData.discount)) * 0.15
+                      : 0)
+                  }
                   onChange={(e) => handleChange("grandTotal", e.target.value)}
                   size="small"
                   sx={{
@@ -1519,11 +1648,19 @@ export default function GenericModal({
                 )}
               </Paper>
               {(() => {
-                const itemsSum = (selectedRow.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
-                const subTotal = selectedRow.subTotal || itemsSum || selectedRow.amount || 0;
+                const itemsSum = (selectedRow.items || []).reduce(
+                  (sum, item) => sum + (item.total || 0),
+                  0,
+                );
+                const subTotal =
+                  selectedRow.subTotal || itemsSum || selectedRow.amount || 0;
                 const discount = selectedRow.discount || 0;
-                const taxAmount = selectedRow.taxAble === "Yes" ? Math.round(subTotal * 0.15) : 0;
-                const grandTotal = selectedRow.grandTotal || (subTotal - discount + taxAmount);
+                const taxAmount =
+                  selectedRow.taxAble === "Yes"
+                    ? Math.round(subTotal * 0.15)
+                    : 0;
+                const grandTotal =
+                  selectedRow.grandTotal || subTotal - discount + taxAmount;
                 return (
                   <Box
                     sx={{

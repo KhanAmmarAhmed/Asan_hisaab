@@ -65,7 +65,7 @@ export default function InvoicesPage() {
     grandTotal: "",
   });
   const [payableData, setPayableData] = useState({
-    employee: "",
+    // employee: "",
     dueDate: "",
     amount: "",
     discount: "",
@@ -75,6 +75,7 @@ export default function InvoicesPage() {
     category: "",
     subCategory: "",
     items: [],
+    entityCategory: "",
   });
 
   const theme = useTheme();
@@ -101,12 +102,17 @@ export default function InvoicesPage() {
 
   const resetPayableData = () => {
     setPayableData({
-      employee: "",
+      entityName: "",        // renamed from employee
+      entityCategory: "",    // new field
       dueDate: "",
       amount: "",
-      description: "",
+      discount: "",
       reference: "",
-      taxAble: "",
+      grandTotal: "",
+      description: "",
+      category: "",
+      subCategory: "",
+      items: [],
     });
   };
 
@@ -155,7 +161,8 @@ export default function InvoicesPage() {
   const handlePayableStep1Submit = (data) => {
     setPayableData((prev) => ({
       ...prev,
-      employee: data.employee,
+      entityName: data.entity,
+      entityCategory: data.entityCategory,
       dueDate: data.dueDate,
       items: prev.items || [],
     }));
@@ -211,8 +218,50 @@ export default function InvoicesPage() {
     resetReceivableData();
   };
 
+  // const handlePayableStep2Submit = (data) => {
+  //   const newVoucher = String(invoices.length + 1).padStart(2, "0");
+  //   const entityTypeMap = {
+  //     customer: "Customer",
+  //     employee: "Employee",
+  //     vendor: "Vendor"
+  //   };
+
+  //   const newEntry = {
+  //     voucher: newVoucher,
+  //     type: "Payable",
+  //     amount: Number(data.amount || 0),
+  //     discount: Number(data.discount || 0),
+  //     subTotal: Number(data.subTotal || 0),
+  //     taxAble: data.taxAble || "",
+  //     grandTotal: Number(data.grandTotal || 0),
+  //     entityType: entityTypeMap[payableData.entityCategory] || "Employee",
+  //     entity: payableData.entityName,
+  //     date: payableData.dueDate,
+  //     reference: data.reference || "",
+  //     madeBy: "Current User",
+  //     status: "Pending",
+  //     description: data.description || payableData.description || "",
+  //     category: payableData.category || "",
+  //     subCategory: payableData.subCategory || "",
+  //     items: payableData.items || [],
+  //   };
+
+  //   addInvoice(newEntry);
+  //   console.log("Payable invoice created:", newEntry);
+
+  //   setIsModalOpen(false);
+  //   setModalMode("selection");
+  //   resetPayableData();
+  // };
   const handlePayableStep2Submit = (data) => {
     const newVoucher = String(invoices.length + 1).padStart(2, "0");
+
+    // Map entity category to display value
+    const entityTypeMap = {
+      customer: "Customer",
+      employee: "Employee",
+      vendor: "Vendor"
+    };
 
     const newEntry = {
       voucher: newVoucher,
@@ -222,8 +271,8 @@ export default function InvoicesPage() {
       subTotal: Number(data.subTotal || 0),
       taxAble: data.taxAble || "",
       grandTotal: Number(data.grandTotal || 0),
-      entityType: "Employee",
-      entity: payableData.employee,
+      entityType: entityTypeMap[payableData.entityCategory] || "Employee",
+      entity: payableData.entityName,
       date: payableData.dueDate,
       reference: data.reference || "",
       madeBy: "Current User",
@@ -240,12 +289,31 @@ export default function InvoicesPage() {
     setIsModalOpen(false);
     setModalMode("selection");
     resetPayableData();
+    console.log("filteredData", filteredData);
   };
-
   const handlePreview = (formData) => {
+    const itemsTotal = (payableData.items || []).reduce(
+      (sum, item) => sum + (item.total || 0),
+      0,
+    );
+    const discount = Number(formData.discount || 0);
+    const subTotal = itemsTotal - discount;
+    const isTaxable = formData.taxAble === "Yes";
+    const tax = isTaxable ? subTotal * 0.15 : 0;
+    const grandTotal = subTotal + tax;
+
     const previewData = modalMode === "receivable-step2"
       ? { ...receivableData, ...formData, type: "Receivable" }
-      : { ...payableData, ...formData, type: "Payable" };
+      : {
+        ...payableData,
+        ...formData,
+        type: "Payable",
+        amount: itemsTotal,
+        discount,
+        subTotal,
+        grandTotal,
+        entityCategory: payableData.entityCategory || "employee",
+      };
     setSelectedRow(previewData);
     setModalMode("transaction-detail-actions");
   };
