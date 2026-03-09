@@ -121,7 +121,7 @@ export default function GenericModal({
     // Initialize with payable data for step 1
     if (mode === "payable-step1") {
       setFormData({
-        entity: payableData?.entity || "",
+        entity: payableData?.entityName || "",
         dueDate: payableData?.dueDate || "",
       });
     }
@@ -129,9 +129,9 @@ export default function GenericModal({
     if (mode === "payable-step1.5") {
       setFormData((prev) => ({
         ...prev,
-        entity: payableData?.entity || "",
+        entity: payableData?.entityName || "",
         dueDate: payableData?.dueDate || "",
-        items: payableData?.items || [], // Preserve items if coming back
+        items: payableData?.items || [],
       }));
     }
 
@@ -392,25 +392,21 @@ export default function GenericModal({
                       ))}
                     </TextField>
                   ) : field.type === "select" ? (
-                    <TextField
-                      select
-                      fullWidth
+                    <GenericSelectField
+                      label={field.label}
                       value={formData[field.id] || ""}
                       onChange={(e) => handleChange(field.id, e.target.value)}
                       size="small"
+                      options={field.options}
+                      renderOption={field.renderOption}
+                      fullWidth
                       sx={{
                         "& .MuiOutlinedInput-root": {
                           borderRadius: 0.5,
                           bgcolor: "#F9F9F9",
                         },
                       }}
-                    >
-                      {field.options.map((option) => (
-                        <MenuItem key={option} value={option}>
-                          {option}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                    />
                   ) : (
                     <TextField
                       fullWidth
@@ -718,7 +714,7 @@ export default function GenericModal({
                   handleSubmit(); // This will call onSubmit with the data
                 }}
                 variant="contained"
-                // disabled={!formData.entity || !formData.dueDate}
+                // disabled={!formData.entity || !formData.dueDate}  // disabled buttton in payable 1.5
                 sx={{
                   bgcolor: "#1B0D3F",
                   textTransform: "none",

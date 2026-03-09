@@ -12,6 +12,8 @@ const GenericSelectField = ({
   size = "small",
   fullWidth = true,
   sx = {},
+  renderOption,
+  placeholder,
 }) => {
   return (
     <Autocomplete
@@ -38,19 +40,28 @@ const GenericSelectField = ({
       }}
       size={size}
       fullWidth={fullWidth}
-      renderOption={(props, option, { index }) => {
-        const { key, ...restProps } = props;
-        const label = typeof option === "string" ? option : (option?.[optionLabel] ?? "");
-        return (
-          <li key={`${label}-${index}`} {...restProps}>
-            {label}
-          </li>
-        );
-      }}
+      renderOption={
+        renderOption
+          ? renderOption
+          : (props, option, { index }) => {
+            const { key, ...restProps } = props;
+            const label =
+              typeof option === "string"
+                ? option
+                : option?.[optionLabel] ?? "";
+
+            return (
+              <li key={`${label}-${index}`} {...restProps}>
+                {label}
+              </li>
+            );
+          }
+      }
       renderInput={(params) => (
         <TextField
           {...params}
           label={label}
+          placeholder={placeholder}
           sx={{
             "& .MuiOutlinedInput-root": {
               backgroundColor: "#FFFFFF",

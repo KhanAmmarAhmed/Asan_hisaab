@@ -65,7 +65,8 @@ export default function InvoicesPage() {
     grandTotal: "",
   });
   const [payableData, setPayableData] = useState({
-    // employee: "",
+    entityName: "",
+    entityCategory: "",
     dueDate: "",
     amount: "",
     discount: "",
@@ -75,7 +76,6 @@ export default function InvoicesPage() {
     category: "",
     subCategory: "",
     items: [],
-    entityCategory: "",
   });
 
   const theme = useTheme();
@@ -555,21 +555,23 @@ export default function InvoicesPage() {
                 ? handleBackFromStep1_5
                 : null
         }
-        onCustomChange={(fieldId, value, setFormData, formData) => {
-          let updatedData = { ...formData, [fieldId]: value };
+        onCustomChange={(fieldId, value, setFormData) => {
+          setFormData((prev) => {
+            let updatedData = { ...prev, [fieldId]: value };
 
-          if (fieldId === "amount" || fieldId === "discount" || fieldId === "taxAble") {
-            const amount = Number(fieldId === "amount" ? value : formData.amount || 0);
-            const discount = Number(fieldId === "discount" ? value : formData.discount || 0);
-            const subTotal = amount - discount;
-            const isTaxable = fieldId === "taxAble" ? value : formData.taxAble;
-            const tax = isTaxable === "Yes" ? subTotal * 0.15 : 0;
-            const grandTotal = subTotal + tax;
-            updatedData.subTotal = subTotal;
-            updatedData.grandTotal = grandTotal;
-          }
+            if (fieldId === "amount" || fieldId === "discount" || fieldId === "taxAble") {
+              const amount = Number(fieldId === "amount" ? value : prev.amount || 0);
+              const discount = Number(fieldId === "discount" ? value : prev.discount || 0);
+              const subTotal = amount - discount;
+              const isTaxable = fieldId === "taxAble" ? value : prev.taxAble;
+              const tax = isTaxable === "Yes" ? subTotal * 0.15 : 0;
+              const grandTotal = subTotal + tax;
+              updatedData.subTotal = subTotal;
+              updatedData.grandTotal = grandTotal;
+            }
 
-          setFormData(updatedData);
+            return updatedData;
+          });
         }}
       />
     </Box>

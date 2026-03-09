@@ -12,7 +12,7 @@ import { DataContext } from "@/context/DataContext";
 
 const tableColumns = [
   { id: "voucher", label: "Voucher#", width: "10%" },
-  { id: "customerName", label: "Customer Name", width: "18%" },
+  { id: "entityName", label: "Entity Name", width: "18%" },
   { id: "accountHead", label: "Account Head", width: "16%" },
   { id: "paymentMethod", label: "Payment Method", width: "16%" },
   { id: "date", label: "Date", width: "14%" },
@@ -30,10 +30,11 @@ const paymentOptions = [
 ];
 
 const ExpensePage = () => {
-  const { expenses, addExpense, updateExpense, customers } = useContext(DataContext);
+  // const { expenses, addExpense, updateExpense, customers } = useContext(DataContext);
+  const { expenses, addExpense, updateExpense, customers, vendors, employees } = useContext(DataContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [customerName, setCustomerName] = useState("");
+  const [entityName, setentityName] = useState("");
   const [accountHead, setAccountHead] = useState("");
   const [searchDate, setSearchDate] = useState("");
   const [selectedRow, setSelectedRow] = useState(null);
@@ -47,7 +48,7 @@ const ExpensePage = () => {
 
     const newEntry = {
       voucher: newVoucher,
-      customerName: formData.customerName || "",
+      entityName: formData.entityName || "",
       accountHead: formData.accountHead || "",
       paymentMethod: formData.paymentMethod || "",
       date: new Date().toISOString().split("T")[0],
@@ -91,13 +92,31 @@ const ExpensePage = () => {
     return `Rs. ${Number(amount || 0).toLocaleString()}`;
   };
 
+  const entityOptions = [
+    ...customers.map(c => ({
+      label: c.entityName || c.customerName,
+      value: c.entityName || c.customerName,
+      type: "customer"
+    })),
+    ...vendors.map(v => ({
+      label: v.vendorName || v.venderName,
+      value: v.vendorName || v.venderName,
+      type: "vendor"
+    })),
+    ...employees.map(e => ({
+      label: e.employeeName,
+      value: e.employeeName,
+      type: "employee"
+    }))
+  ];
+
   const filteredData = useMemo(() => {
     return expenses.filter((item) => {
       return (
-        (customerName === "" ||
-          (item.customerName || "")
+        (entityName === "" ||
+          (item.entityName || "")
             .toLowerCase()
-            .includes(customerName.toLowerCase())) &&
+            .includes(entityName.toLowerCase())) &&
         (accountHead === "" ||
           (item.accountHead || "")
             .toLowerCase()
@@ -106,7 +125,7 @@ const ExpensePage = () => {
           new Date(item.date).toISOString().split("T")[0] === searchDate)
       );
     });
-  }, [expenses, customerName, accountHead, searchDate]);
+  }, [expenses, entityName, accountHead, searchDate]);
 
   const handleRowClick = (row) => {
     setSelectedRow(row);
@@ -170,13 +189,13 @@ const ExpensePage = () => {
           }}
         >
           <GenericSelectField
-            label="Customer Name"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
+            label="Entity Name"
+            value={entityName}
+            onChange={(e) => setentityName(e.target.value)}
             options={[
               ...new Set([
-                ...expenses.map((item) => item.customerName),
-                ...customers.map((c) => c.customerName),
+                ...expenses.map((item) => item.entityName),
+                ...customers.map((c) => c.entityName),
               ]),
             ].map((name) => ({
               label: name,
@@ -237,10 +256,42 @@ const ExpensePage = () => {
           modalMode === "add" || modalMode === "edit"
             ? [
               {
-                id: "customerName",
+                id: "entityName",
                 label: "Entity Name",
                 type: "select",
-                options: customers.map((c) => c.customerName),
+                options: entityOptions,
+                renderOption: (props, option) => {
+                  const color =
+                    option.type === "employee"
+                      ? "#4caf50"
+                      : option.type === "vendor"
+                        ? "#ff9800"
+                        : "#2196f3";
+
+                  return (
+                    <li {...props}>
+                      <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+                        {option.label}
+
+                        <Box
+                          sx={{
+                            ml: "auto",
+                            px: 1,
+                            py: 0.2,
+                            borderRadius: "12px",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            backgroundColor: color,
+                            color: "white",
+                            textTransform: "capitalize",
+                          }}
+                        >
+                          {option.type}
+                        </Box>
+                      </Box>
+                    </li>
+                  );
+                },
               },
               { id: "accountHead", label: "Account Head" },
               {
@@ -260,7 +311,7 @@ const ExpensePage = () => {
               },
             ]
             : [
-              { id: "customerName", label: "Customer Name" },
+              { id: "entityName", label: "Customer Name" },
               { id: "accountHead", label: "Account Head" },
               { id: "paymentMethod", label: "Payment Method" },
               { id: "date", label: "Date" },
