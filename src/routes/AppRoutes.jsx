@@ -18,11 +18,38 @@ import ExpensePage from "@/components/pages/expense/ExpensePage";
 import InvoicesPage from "@/components/pages/invoices/InvoicesPage";
 import CashbookPage from "@/components/pages/cashbook/CashbookPage";
 import PlaceholderPage from "@/components/pages/MaintenancePage";
+import LoginPage from "@/components/auth/LoginPage";
+import SignupPage from "@/components/auth/SignupPage";
+import ProtectedRoute from "./ProtectedRoute";
+import PublicRoute from "./PublicRoute";
 
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<MainLayout />}>
+      <Route
+        path="/signup"
+        element={
+          <PublicRoute>
+            <SignupPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <MainLayout />
+          </ProtectedRoute>
+        }
+      >
         {/* Redirect root to a default tab (dashboard) */}
         <Route index element={<Navigate to="dashboard" replace />} />
 

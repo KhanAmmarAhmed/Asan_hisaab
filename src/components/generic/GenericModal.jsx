@@ -58,6 +58,8 @@ export default function GenericModal({
   selectedRow = null,
   onSubmit,
   submitButtonLabel = "Save",
+  loading = false,
+  error = "",
   onPrint,
   onShare,
   onSave,
@@ -108,6 +110,7 @@ export default function GenericModal({
   useEffect(() => {
     if (selectedRow && (mode === "add" || mode === "form" || mode === "edit")) {
       const initialData = {};
+
       fields.forEach((field) => {
         if (field.defaultValue !== undefined) {
           initialData[field.id] = field.defaultValue;
@@ -268,7 +271,7 @@ export default function GenericModal({
     }
 
     if (onSubmit) {
-      onSubmit(finalData);
+      await Promise.resolve(onSubmit(finalData));
     }
 
     // Close modal only for final steps
@@ -351,6 +354,11 @@ export default function GenericModal({
         {/* ========== ADD/FORM/EDIT MODE ========== */}
         {(mode === "add" || mode === "form" || mode === "edit") && (
           <>
+            {!!error && (
+              <Typography color="error" variant="body2" sx={{ mb: 2 }}>
+                {error}
+              </Typography>
+            )}
             <Grid container spacing={2}>
               {fields.map((field) => (
                 <Grid item xs={12} sm={field.fullWidth ? 12 : 6} key={field.id}>
@@ -360,7 +368,6 @@ export default function GenericModal({
                   >
                     {field.label}
                   </Typography>
-
 
                   {field.type === "select" && field.optionsWithImages ? (
                     <TextField
@@ -378,12 +385,22 @@ export default function GenericModal({
                     >
                       {field.optionsWithImages.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
                             {option.image && (
                               <img
                                 src={option.image}
                                 alt={option.label}
-                                style={{ width: 24, height: 24, objectFit: "contain" }}
+                                style={{
+                                  width: 24,
+                                  height: 24,
+                                  objectFit: "contain",
+                                }}
                               />
                             )}
                             {option.label}
@@ -586,6 +603,7 @@ export default function GenericModal({
             <Box display="flex" justifyContent="flex-end" gap={2}>
               <Button
                 onClick={handleSubmit}
+                disabled={loading}
                 variant="contained"
                 sx={{
                   bgcolor: "#1B0D3F",
@@ -598,7 +616,7 @@ export default function GenericModal({
                   "&:hover": { bgcolor: "#2D1B69" },
                 }}
               >
-                {submitButtonLabel}
+                {loading ? "Saving..." : submitButtonLabel}
               </Button>
             </Box>
           </>
@@ -623,11 +641,22 @@ export default function GenericModal({
                     const selectedValue = e.target.value;
                     // Build a lookup array from props
                     const allOptions = [
-                      ...customers.map(c => ({ value: c.customerName, type: 'customer' })),
-                      ...employees.map(emp => ({ value: emp.employeeName, type: 'employee' })),
-                      ...vendors.map(v => ({ value: v.venderName || v.vendorName, type: 'vendor' }))
+                      ...customers.map((c) => ({
+                        value: c.customerName,
+                        type: "customer",
+                      })),
+                      ...employees.map((emp) => ({
+                        value: emp.employeeName,
+                        type: "employee",
+                      })),
+                      ...vendors.map((v) => ({
+                        value: v.venderName || v.vendorName,
+                        type: "vendor",
+                      })),
                     ];
-                    const selectedOption = allOptions.find(opt => opt.value === selectedValue);
+                    const selectedOption = allOptions.find(
+                      (opt) => opt.value === selectedValue,
+                    );
                     handleChange("entity", selectedValue);
                     handleChange("entityCategory", selectedOption?.type || "");
                   }}
@@ -636,40 +665,49 @@ export default function GenericModal({
                     ...customers.map((c) => ({
                       label: c.customerName,
                       value: c.customerName,
-                      type: 'customer',
-                      key: `customer-${c.id || c.customerName}`
+                      type: "customer",
+                      key: `customer-${c.id || c.customerName}`,
                     })),
                     ...employees.map((emp) => ({
                       label: emp.employeeName,
                       value: emp.employeeName,
-                      type: 'employee',
-                      key: `employee-${emp.id || emp.employeeName}`
+                      type: "employee",
+                      key: `employee-${emp.id || emp.employeeName}`,
                     })),
                     ...vendors.map((v) => ({
                       label: v.venderName || v.vendorName,
                       value: v.venderName || v.vendorName,
-                      type: 'vendor',
-                      key: `vendor-${v.id || v.venderName || v.vendorName}`
+                      type: "vendor",
+                      key: `vendor-${v.id || v.venderName || v.vendorName}`,
                     })),
                   ]}
                   renderOption={(props, option) => {
                     const { key, ...otherProps } = props;
                     return (
                       <li key={option.key} {...otherProps}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            width: "100%",
+                          }}
+                        >
                           <span>{option.label}</span>
                           <Chip
                             label={option.type}
                             size="small"
                             sx={{
-                              ml: 'auto',
+                              ml: "auto",
                               backgroundColor:
-                                option.type === 'customer' ? '#4caf50' :
-                                  option.type === 'vendor' ? '#2196f3' : '#f44336', // employee - red
-                              color: 'white',
+                                option.type === "customer"
+                                  ? "#4caf50"
+                                  : option.type === "vendor"
+                                    ? "#2196f3"
+                                    : "#f44336", // employee - red
+                              color: "white",
                               fontWeight: 600,
-                              textTransform: 'capitalize',
-                              '& .MuiChip-label': { px: 1 }
+                              textTransform: "capitalize",
+                              "& .MuiChip-label": { px: 1 },
                             }}
                           />
                         </Box>

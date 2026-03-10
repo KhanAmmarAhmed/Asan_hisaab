@@ -1,8 +1,8 @@
 import { useState, useContext, useMemo } from "react";
 import Box from "@mui/material/Box";
 import { Button, Typography } from "@mui/material";
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { Add, FilterList } from "@mui/icons-material";
 import GenericTable from "@/components/generic/GenericTable";
 import GenericModal from "@/components/generic/GenericModal";
@@ -10,8 +10,10 @@ import GenericSelectField from "@/components/generic/GenericSelectField";
 import GenericDateField from "@/components/generic/GenericDateField";
 import { useTheme, useMediaQuery, Collapse } from "@mui/material";
 import { DataContext } from "@/context/DataContext";
+import { addCustomerApi } from "@/services/customerApi";
 
 const tableColumns = [
+  // { id: "voucherId", label: "voucher#", width: "5%" },
   { id: "customerName", label: "Customer Name", width: "25%" },
   { id: "phone", label: "Phone Number", width: "25%" },
   { id: "email", label: "Email", width: "25%" },
@@ -25,41 +27,56 @@ export default function CustomersPage() {
   const [searchName, setSearchName] = useState("");
   const [searchEmail, setSearchEmail] = useState("");
   const [searchDate, setSearchDate] = useState("");
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   // Helper to create options in the shape { label, value }
   const makeOptions = (arr) =>
-    Array.from(new Set(arr.filter(Boolean))).map((v) => ({ label: v, value: v }));
+    Array.from(new Set(arr.filter(Boolean))).map((v) => ({
+      label: v,
+      value: v,
+    }));
 
   const filteredData = useMemo(() => {
     return customers.filter((customer) => {
+      const customerName = (customer.customerName || "").toLowerCase();
+      const customerEmail = (customer.email || "").toLowerCase();
       return (
         (searchName === "" ||
-          customer.customerName
-            .toLowerCase()
-            .includes(searchName.toLowerCase())) &&
+          customerName.includes(searchName.toLowerCase())) &&
         (searchEmail === "" ||
-          customer.email
-            .toLowerCase()
-            .includes(searchEmail.toLowerCase())) &&
+          customerEmail.includes(searchEmail.toLowerCase())) &&
         (searchDate === "" || customer.date === searchDate)
       );
     });
   }, [customers, searchName, searchEmail, searchDate]);
 
-  const handleCreateCustomer = (formData) => {
-    const newEntry = {
-      customerName: formData.customerName || "",
-      phone: formData.phone || "",
-      email: formData.email || "",
-      address: formData.address || "",
-      date: new Date().toISOString().split("T")[0],
-    };
+  const handleCreateCustomer = async (formData) => {
+    setApiLoading(true);
+    setApiError("");
+    try {
+      const response = await addCustomerApi(formData);
+      const created = Array.isArray(response) ? response[0] : response;
 
-    addCustomer(newEntry);
-    setIsModalOpen(false);
+      const newCustomer = {
+        customerName:
+          created?.customerName || created?.name || formData.customerName,
+        phone: created?.phone || created?.number || formData.phone,
+        email: created?.email || formData.email,
+        address: created?.address || formData.address,
+        date: new Date().toISOString().split("T")[0],
+        id: created?.id ?? created?.customer_id ?? created?.customerId,
+      };
+      addCustomer(newCustomer);
+      setIsModalOpen(false);
+    } catch (err) {
+      setApiError(err.message || "Failed to create customer");
+    } finally {
+      setApiLoading(false);
+    }
   };
 
   return (
@@ -161,6 +178,8 @@ export default function CustomersPage() {
           { id: "email", label: "Email" },
           { id: "address", label: "Address" },
         ]}
+        loading={apiLoading} // pass loading state
+        error={apiError}
       />
     </Box>
   );

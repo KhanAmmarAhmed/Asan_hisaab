@@ -21,7 +21,7 @@ import GenericDateField from "@/components/generic/GenericDateField";
 import { DataContext } from "@/context/DataContext";
 
 const tableColumns = [
-  { id: "voucher", label: "Voucher#", width: "5%" },
+  { id: "voucher", label: "Invoice#", width: "5%" },
   { id: "type", label: "Type", width: "10%" },
   { id: "amount", label: "Amount", width: "13%" },
   { id: "entityType", label: "Entity Type", width: "10%" },

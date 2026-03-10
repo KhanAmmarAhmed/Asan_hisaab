@@ -14,6 +14,7 @@ import { useTab } from "@/context/TabContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import logo from "@/components/assets/logo.png";
 import { useTheme, useMediaQuery } from "@mui/material";
+import { useAuth } from "@/context/AuthContext";
 
 const tabs = [
   { key: "dashboard", label: "Dashboard" },
@@ -25,6 +26,10 @@ const tabs = [
 ];
 
 const CREATE_ROUTES = ["/projects", "/customers", "/vendors", "/employees"];
+const handleLogout = () => {
+  localStorage.removeItem("token");
+  window.location.href = "/login";
+};
 
 export default function HeroSection() {
   // const { activeTab, setActiveTab } = useTab();
@@ -36,7 +41,7 @@ export default function HeroSection() {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
+  const { logout } = useAuth();
   const handleCreate = (path) => {
     setCreateAnchor(null);
     navigate(path);
@@ -361,15 +366,21 @@ export default function HeroSection() {
       >
         <MenuItem
           sx={{ fontWeight: 600 }}
-          // onClick={() => handleCreate("/projects")}
+        // onClick={() => handleCreate("/projects")}
         >
           Accounts Settings
         </MenuItem>
         <MenuItem
           sx={{ fontWeight: 600 }}
-          // onClick={() => handleCreate("/customers")}
+        // onClick={() => handleCreate("/customers")}
         >
           Switch Account
+        </MenuItem>
+        <MenuItem
+          sx={{ fontWeight: 600 }}
+          onClick={logout}
+        >
+          Logout
         </MenuItem>
       </Menu>
 
