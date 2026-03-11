@@ -292,6 +292,7 @@ export default function GenericModal({
   const handleBack = () => {
     if (onBack) onBack();
   };
+  
 
   return (
     <Dialog
@@ -1058,11 +1059,11 @@ export default function GenericModal({
                 </Box>
 
                 <Box display="flex" flexDirection="column" width="45%">
-                  <Typography>Discount</Typography>
+                  <Typography>Discount (%)</Typography>
                   <TextField
                     fullWidth
                     type="number"
-                    placeholder="Enter Discount"
+                    placeholder="Enter Discount Percentage"
                     value={formData.discount || ""}
                     onChange={(e) => handleChange("discount", e.target.value)}
                     size="small"
@@ -1709,7 +1710,7 @@ export default function GenericModal({
                       Sub Total: Rs. {subTotal}/-
                     </Typography>
                     <Typography fontWeight={600} color="#555">
-                      Discount: Rs.{discount}/-
+                      Discount (%): {discount}%
                     </Typography>
                     <Typography fontWeight={600} color="#555">
                       Tax(15%): Rs. {taxAmount}/-

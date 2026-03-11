@@ -10,6 +10,7 @@ import GenericSelectField from "@/components/generic/GenericSelectField";
 import GenericDateField from "@/components/generic/GenericDateField";
 import { useTheme, useMediaQuery, Collapse } from "@mui/material";
 import { DataContext } from "@/context/DataContext";
+import { addEmployeeApi } from "@/services/employeeApi";
 
 const tableColumns = [
     { id: "employeeName", label: "Employee Name", width: "25%" },
@@ -23,9 +24,18 @@ export default function EmployeesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
 
+    // Draft values (edited in UI)
+    const [searchNameDraft, setSearchNameDraft] = useState("");
+    const [searchEmailDraft, setSearchEmailDraft] = useState("");
+    const [searchDateDraft, setSearchDateDraft] = useState("");
+
+    // Applied values (used to filter table)
     const [searchName, setSearchName] = useState("");
     const [searchEmail, setSearchEmail] = useState("");
     const [searchDate, setSearchDate] = useState("");
+
+    const [apiLoading, setApiLoading] = useState(false);
+    const [apiError, setApiError] = useState("");
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -34,32 +44,66 @@ export default function EmployeesPage() {
         Array.from(new Set(arr.filter(Boolean))).map((v) => ({ label: v, value: v }));
 
     const filteredData = useMemo(() => {
+        const searchNameNorm = String(searchName || "").toLowerCase().trim();
+        const searchEmailNorm = String(searchEmail || "").toLowerCase().trim();
+        const searchDateNorm =
+            (String(searchDate || "").match(/\d{4}-\d{2}-\d{2}/) || [])[0] || "";
+
         return employees.filter((employee) => {
+            const employeeDate =
+                (String(employee.date || "").match(/\d{4}-\d{2}-\d{2}/) || [])[0] ||
+                "";
+
             return (
-                (searchName === "" ||
+                (searchNameNorm === "" ||
                     (employee.employeeName || "")
                         .toLowerCase()
-                        .includes(searchName.toLowerCase())) &&
-                (searchEmail === "" ||
+                        .includes(searchNameNorm)) &&
+                (searchEmailNorm === "" ||
                     (employee.email || "")
                         .toLowerCase()
-                        .includes(searchEmail.toLowerCase())) &&
-                (searchDate === "" || employee.date === searchDate)
+                        .includes(searchEmailNorm)) &&
+                (searchDateNorm === "" || employeeDate === searchDateNorm)
             );
         });
     }, [employees, searchName, searchEmail, searchDate]);
 
-    const handleCreateEmployee = (formData) => {
-        const newEntry = {
-            employeeName: formData.employeeName || "",
-            phone: formData.phone || "",
-            email: formData.email || "",
-            address: formData.address || "",
-            date: new Date().toISOString().split("T")[0],
-        };
+    const applyFilters = () => {
+        setSearchName(searchNameDraft);
+        setSearchEmail(searchEmailDraft);
+        setSearchDate(searchDateDraft);
+    };
 
-        addEmployee(newEntry);
-        setIsModalOpen(false);
+    const handleCreateEmployee = async (formData) => {
+        setApiLoading(true);
+        setApiError("");
+        try {
+            const response = await addEmployeeApi(formData);
+            const created = Array.isArray(response) ? response[0] : response;
+
+            const newEntry = {
+                employeeName:
+                    created?.employeeName || created?.name || formData.employeeName || "",
+                phone: created?.phone || created?.number || formData.phone || "",
+                email: created?.email || formData.email || "",
+                address: created?.address || created?.Address || formData.address || "",
+                department: created?.department || formData.department || "",
+                designation: created?.designation || formData.designation || "",
+                date: String(
+                    created?.created_at || created?.date || new Date().toISOString(),
+                )
+                    .split("T")[0]
+                    .split(" ")[0],
+                id: created?.id ?? created?.employee_id ?? created?.employeeId,
+            };
+
+            addEmployee(newEntry);
+            setIsModalOpen(false);
+        } catch (err) {
+            setApiError(err.message || "Failed to create employee");
+        } finally {
+            setApiLoading(false);
+        }
     };
 
     return (
@@ -112,27 +156,30 @@ export default function EmployeesPage() {
                 >
                     <GenericSelectField
                         label="Employee Name"
-                        value={searchName}
-                        onChange={(e) => setSearchName(e?.target?.value ?? e)}
+                        value={searchNameDraft}
+                        onChange={(e) => setSearchNameDraft(e?.target?.value ?? e)}
                         options={makeOptions(employees.map((c) => c.employeeName))}
                     />
 
                     <GenericSelectField
                         label="Email Address"
-                        value={searchEmail}
-                        onChange={(e) => setSearchEmail(e?.target?.value ?? e)}
+                        value={searchEmailDraft}
+                        onChange={(e) => setSearchEmailDraft(e?.target?.value ?? e)}
                         options={makeOptions(employees.map((c) => c.email))}
                     />
 
                     <GenericDateField
-                        value={searchDate}
+                        value={searchDateDraft}
                         onChange={(valOrEvent) =>
-                            setSearchDate(valOrEvent?.target?.value ?? valOrEvent ?? "")
+                            setSearchDateDraft(
+                                valOrEvent?.target?.value ?? valOrEvent ?? "",
+                            )
                         }
                     />
 
                     <Button
                         variant="contained"
+                        onClick={applyFilters}
                         sx={{
                             borderRadius: 0.5,
                             backgroundColor: "#1B0D3F",
@@ -162,7 +209,11 @@ export default function EmployeesPage() {
                     { id: "phone", label: "Phone Number" },
                     { id: "email", label: "Email" },
                     { id: "address", label: "Address" },
+                    { id: "department", label: "Department" },
+                    { id: "designation", label: "Designation" },
                 ]}
+                loading={apiLoading}
+                error={apiError}
             />
         </Box>
     );

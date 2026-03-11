@@ -473,6 +473,8 @@
 
 import React, { createContext, useState, useEffect, useMemo } from "react";
 import { fetchCustomersApi } from "../services/customerApi";
+import { fetchEmployeesApi } from "../services/employeeApi";
+import { fetchVendorsApi } from "../services/vendorApi";
 
 export const DataContext = createContext();
 
@@ -504,44 +506,10 @@ const safeParse = (item) => {
 };
 
 // Default data for each entity
-const DEFAULT_VENDORS = [
-  {
-    venderName: "Muhammad Usman",
-    phone: "03048973476",
-    email: "usman123@gmail.com",
-    address: "Rawalpindi",
-    date: "2024-01-10",
-  },
-  {
-    venderName: "Ehtesham Ali",
-    phone: "03157629450",
-    email: "ehteshamali@gmail.com",
-    address: "Mianwali",
-    date: "2024-01-15",
-  },
-];
-
 const DEFAULT_PROJECTS = [
   { name: "Friends It Solutions", type: "FIS - IT Company" },
   { name: "BSB", type: "FIS - IT Company" },
   { name: "Business Solutions", type: "FIS - IT Company" },
-];
-
-const DEFAULT_EMPLOYEES = [
-  {
-    employeeName: "Muhammad Usman",
-    phone: "03048973476",
-    email: "usman123@gmail.com",
-    address: "Rawalpindi",
-    date: "2024-01-10",
-  },
-  {
-    employeeName: "Ehtesham Ali",
-    phone: "03157629450",
-    email: "ehteshamali@gmail.com",
-    address: "Mianwali",
-    date: "2024-01-15",
-  },
 ];
 
 export const DataProvider = ({ children }) => {
@@ -549,12 +517,7 @@ export const DataProvider = ({ children }) => {
   const [customers, setCustomers] = useState([]);
 
   // Vendors – safely read from localStorage
-  const [vendors, setVendors] = useState(() => {
-    const saved = localStorage.getItem("vendors");
-    const parsed = safeParse(saved);
-    // Ensure we have an array; if not, use defaults
-    return ensureIdsInArray(Array.isArray(parsed) ? parsed : DEFAULT_VENDORS);
-  });
+  const [vendors, setVendors] = useState([]);
 
   // Projects
   const [projects, setProjects] = useState(() => {
@@ -563,12 +526,8 @@ export const DataProvider = ({ children }) => {
     return ensureIdsInArray(Array.isArray(parsed) ? parsed : DEFAULT_PROJECTS);
   });
 
-  // Employees
-  const [employees, setEmployees] = useState(() => {
-    const saved = localStorage.getItem("employees");
-    const parsed = safeParse(saved);
-    return ensureIdsInArray(Array.isArray(parsed) ? parsed : DEFAULT_EMPLOYEES);
-  });
+  // Employees are API-backed â€“ start with empty array
+  const [employees, setEmployees] = useState([]);
 
   // Invoices
   const [invoices, setInvoices] = useState(() => {
@@ -593,13 +552,11 @@ export const DataProvider = ({ children }) => {
 
   // Persist only non‑customer data to localStorage
   useEffect(() => {
-    localStorage.setItem("vendors", JSON.stringify(vendors));
     localStorage.setItem("projects", JSON.stringify(projects));
-    localStorage.setItem("employees", JSON.stringify(employees));
     localStorage.setItem("invoices", JSON.stringify(invoices));
     localStorage.setItem("income", JSON.stringify(income));
     localStorage.setItem("expenses", JSON.stringify(expenses));
-  }, [vendors, projects, employees, invoices, income, expenses]);
+  }, [projects, invoices, income, expenses]);
 
   // Fetch customers from API on mount
   useEffect(() => {
@@ -607,28 +564,85 @@ export const DataProvider = ({ children }) => {
 
     const mapCustomer = (c) => ({
       id: c?.id ?? c?.customer_id ?? c?.customerId ?? undefined,
-      customerName: c?.customerName ?? c?.name ?? "",
-      phone: c?.phone ?? c?.number ?? "",
+      customerName: c?.name ?? c?.customerName ?? "", // API uses "name"
+      phone: c?.number ?? c?.phone ?? "", // API uses "number"
       email: c?.email ?? "",
-      address: c?.address ?? "",
-      date: c?.date ?? c?.created_at ?? c?.createdAt ?? "",
+      address: c?.Address ?? c?.address ?? "", // API uses "Address" (capital A)
+      date: String(c?.created_at ?? c?.date ?? c?.createdAt ?? "").split(
+        " ",
+      )[0], // API uses "created_at"
     });
 
     (async () => {
       try {
-        const result = await fetchCustomersApi();
-        const list = Array.isArray(result)
-          ? result
-          : Array.isArray(result?.customers)
-            ? result.customers
-            : Array.isArray(result?.data)
-              ? result.data
-              : [];
+        const list = await fetchCustomersApi();
 
         if (!isMounted) return;
         setCustomers(ensureIdsInArray(list.map(mapCustomer)));
       } catch (err) {
         console.warn("Failed to fetch customers:", err);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Fetch employees from API on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    const mapEmployee = (e) => ({
+      id: e?.id ?? e?.employee_id ?? e?.employeeId ?? undefined,
+      employeeName: e?.name ?? e?.employeeName ?? "",
+      phone: e?.number ?? e?.phone ?? "",
+      email: e?.email ?? "",
+      address: e?.address ?? e?.Address ?? "",
+      department: e?.department ?? "",
+      designation: e?.designation ?? "",
+      date: String(e?.created_at ?? e?.date ?? e?.createdAt ?? "").split(
+        " ",
+      )[0],
+    });
+
+    (async () => {
+      try {
+        const list = await fetchEmployeesApi();
+        if (!isMounted) return;
+        setEmployees(ensureIdsInArray(list.map(mapEmployee)));
+      } catch (err) {
+        console.warn("Failed to fetch employees:", err);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Fetch vendors from API on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    const mapVendor = (v) => ({
+      id: v?.id ?? v?.vendor_id ?? v?.vender_id ?? v?.vendorId ?? undefined,
+      venderName: v?.name ?? v?.venderName ?? v?.vendorName ?? "",
+      phone: v?.number ?? v?.phone ?? "",
+      email: v?.email ?? "",
+      address: v?.address ?? v?.Address ?? "",
+      date: String(v?.created_at ?? v?.date ?? v?.createdAt ?? "").split(
+        " ",
+      )[0],
+    });
+
+    (async () => {
+      try {
+        const list = await fetchVendorsApi();
+        if (!isMounted) return;
+        setVendors(ensureIdsInArray(list.map(mapVendor)));
+      } catch (err) {
+        console.warn("Failed to fetch vendors:", err);
       }
     })();
 

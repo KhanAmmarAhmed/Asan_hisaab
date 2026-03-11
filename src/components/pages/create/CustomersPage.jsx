@@ -13,7 +13,6 @@ import { DataContext } from "@/context/DataContext";
 import { addCustomerApi } from "@/services/customerApi";
 
 const tableColumns = [
-  // { id: "voucherId", label: "voucher#", width: "5%" },
   { id: "customerName", label: "Customer Name", width: "25%" },
   { id: "phone", label: "Phone Number", width: "25%" },
   { id: "email", label: "Email", width: "25%" },
@@ -24,6 +23,12 @@ export default function CustomersPage() {
   const { customers, addCustomer } = useContext(DataContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  // Draft values (edited in UI)
+  const [searchNameDraft, setSearchNameDraft] = useState("");
+  const [searchEmailDraft, setSearchEmailDraft] = useState("");
+  const [searchDateDraft, setSearchDateDraft] = useState("");
+
+  // Applied values (used to filter table)
   const [searchName, setSearchName] = useState("");
   const [searchEmail, setSearchEmail] = useState("");
   const [searchDate, setSearchDate] = useState("");
@@ -41,18 +46,29 @@ export default function CustomersPage() {
     }));
 
   const filteredData = useMemo(() => {
+    const searchNameNorm = String(searchName || "").toLowerCase().trim();
+    const searchEmailNorm = String(searchEmail || "").toLowerCase().trim();
+    const searchDateNorm =
+      (String(searchDate || "").match(/\d{4}-\d{2}-\d{2}/) || [])[0] || "";
+
     return customers.filter((customer) => {
       const customerName = (customer.customerName || "").toLowerCase();
       const customerEmail = (customer.email || "").toLowerCase();
+      const customerDate =
+        (String(customer.date || "").match(/\d{4}-\d{2}-\d{2}/) || [])[0] || "";
       return (
-        (searchName === "" ||
-          customerName.includes(searchName.toLowerCase())) &&
-        (searchEmail === "" ||
-          customerEmail.includes(searchEmail.toLowerCase())) &&
-        (searchDate === "" || customer.date === searchDate)
+        (searchNameNorm === "" || customerName.includes(searchNameNorm)) &&
+        (searchEmailNorm === "" || customerEmail.includes(searchEmailNorm)) &&
+        (searchDateNorm === "" || customerDate === searchDateNorm)
       );
     });
   }, [customers, searchName, searchEmail, searchDate]);
+
+  const applyFilters = () => {
+    setSearchName(searchNameDraft);
+    setSearchEmail(searchEmailDraft);
+    setSearchDate(searchDateDraft);
+  };
 
   const handleCreateCustomer = async (formData) => {
     setApiLoading(true);
@@ -66,7 +82,7 @@ export default function CustomersPage() {
           created?.customerName || created?.name || formData.customerName,
         phone: created?.phone || created?.number || formData.phone,
         email: created?.email || formData.email,
-        address: created?.address || formData.address,
+        address: created?.address || created?.Address || formData.address,
         date: new Date().toISOString().split("T")[0],
         id: created?.id ?? created?.customer_id ?? created?.customerId,
       };
@@ -128,27 +144,28 @@ export default function CustomersPage() {
         >
           <GenericSelectField
             label="Customer Name"
-            value={searchName}
-            onChange={(e) => setSearchName(e?.target?.value ?? e)}
+            value={searchNameDraft}
+            onChange={(e) => setSearchNameDraft(e?.target?.value ?? e)}
             options={makeOptions(customers.map((c) => c.customerName))}
           />
 
           <GenericSelectField
             label="Email Address"
-            value={searchEmail}
-            onChange={(e) => setSearchEmail(e?.target?.value ?? e)}
+            value={searchEmailDraft}
+            onChange={(e) => setSearchEmailDraft(e?.target?.value ?? e)}
             options={makeOptions(customers.map((c) => c.email))}
           />
 
           <GenericDateField
-            value={searchDate}
+            value={searchDateDraft}
             onChange={(valOrEvent) =>
-              setSearchDate(valOrEvent?.target?.value ?? valOrEvent ?? "")
+              setSearchDateDraft(valOrEvent?.target?.value ?? valOrEvent ?? "")
             }
           />
 
           <Button
             variant="contained"
+            onClick={applyFilters}
             sx={{
               borderRadius: 0.5,
               backgroundColor: "#1B0D3F",

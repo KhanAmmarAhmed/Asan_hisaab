@@ -10,6 +10,7 @@ import GenericSelectField from "@/components/generic/GenericSelectField";
 import GenericDateField from "@/components/generic/GenericDateField";
 import { useTheme, useMediaQuery, Collapse } from "@mui/material";
 import { DataContext } from "@/context/DataContext";
+import { addVendorApi } from "@/services/vendorApi";
 
 const tableColumns = [
   { id: "venderName", label: "Vender Name", width: "25%" },
@@ -23,9 +24,18 @@ export default function VendersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Draft values (edited in UI)
+  const [searchNameDraft, setSearchNameDraft] = useState("");
+  const [searchEmailDraft, setSearchEmailDraft] = useState("");
+  const [searchDateDraft, setSearchDateDraft] = useState("");
+
+  // Applied values (used to filter table)
   const [searchName, setSearchName] = useState("");
   const [searchEmail, setSearchEmail] = useState("");
   const [searchDate, setSearchDate] = useState("");
+
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -34,32 +44,61 @@ export default function VendersPage() {
     Array.from(new Set(arr.filter(Boolean))).map((v) => ({ label: v, value: v }));
 
   const filteredData = useMemo(() => {
+    const searchNameNorm = String(searchName || "").toLowerCase().trim();
+    const searchEmailNorm = String(searchEmail || "").toLowerCase().trim();
+    const searchDateNorm =
+      (String(searchDate || "").match(/\d{4}-\d{2}-\d{2}/) || [])[0] || "";
+
     return vendors.filter((vender) => {
+      const venderDate =
+        (String(vender.date || "").match(/\d{4}-\d{2}-\d{2}/) || [])[0] || "";
       return (
-        (searchName === "" ||
+        (searchNameNorm === "" ||
           (vender.venderName || "")
             .toLowerCase()
-            .includes(searchName.toLowerCase())) &&
-        (searchEmail === "" ||
+            .includes(searchNameNorm)) &&
+        (searchEmailNorm === "" ||
           (vender.email || "")
             .toLowerCase()
-            .includes(searchEmail.toLowerCase())) &&
-        (searchDate === "" || vender.date === searchDate)
+            .includes(searchEmailNorm)) &&
+        (searchDateNorm === "" || venderDate === searchDateNorm)
       );
     });
   }, [vendors, searchName, searchEmail, searchDate]);
 
-  const handleCreateVendor = (formData) => {
-    const newEntry = {
-      venderName: formData.venderName || "",
-      phone: formData.phone || "",
-      email: formData.email || "",
-      address: formData.address || "",
-      date: new Date().toISOString().split("T")[0],
-    };
+  const applyFilters = () => {
+    setSearchName(searchNameDraft);
+    setSearchEmail(searchEmailDraft);
+    setSearchDate(searchDateDraft);
+  };
 
-    addVendor(newEntry);
-    setIsModalOpen(false);
+  const handleCreateVendor = async (formData) => {
+    setApiLoading(true);
+    setApiError("");
+    try {
+      const response = await addVendorApi(formData);
+      const created = Array.isArray(response) ? response[0] : response;
+
+      const newEntry = {
+        venderName: created?.venderName || created?.name || formData.venderName || "",
+        phone: created?.phone || created?.number || formData.phone || "",
+        email: created?.email || formData.email || "",
+        address: created?.address || created?.Address || formData.address || "",
+        date: String(
+          created?.created_at || created?.date || new Date().toISOString(),
+        )
+          .split("T")[0]
+          .split(" ")[0],
+        id: created?.id ?? created?.vendor_id ?? created?.vender_id ?? created?.vendorId,
+      };
+
+      addVendor(newEntry);
+      setIsModalOpen(false);
+    } catch (err) {
+      setApiError(err.message || "Failed to create vendor");
+    } finally {
+      setApiLoading(false);
+    }
   };
 
   return (
@@ -112,27 +151,28 @@ export default function VendersPage() {
         >
           <GenericSelectField
             label="Vender Name"
-            value={searchName}
-            onChange={(e) => setSearchName(e?.target?.value ?? e)}
+            value={searchNameDraft}
+            onChange={(e) => setSearchNameDraft(e?.target?.value ?? e)}
             options={makeOptions(vendors.map((c) => c.venderName))}
           />
 
           <GenericSelectField
             label="Email Address"
-            value={searchEmail}
-            onChange={(e) => setSearchEmail(e?.target?.value ?? e)}
+            value={searchEmailDraft}
+            onChange={(e) => setSearchEmailDraft(e?.target?.value ?? e)}
             options={makeOptions(vendors.map((c) => c.email))}
           />
 
           <GenericDateField
-            value={searchDate}
+            value={searchDateDraft}
             onChange={(valOrEvent) =>
-              setSearchDate(valOrEvent?.target?.value ?? valOrEvent ?? "")
+              setSearchDateDraft(valOrEvent?.target?.value ?? valOrEvent ?? "")
             }
           />
 
           <Button
             variant="contained"
+            onClick={applyFilters}
             sx={{
               borderRadius: 0.5,
               backgroundColor: "#1B0D3F",
@@ -147,7 +187,7 @@ export default function VendersPage() {
       <GenericTable
         columns={tableColumns}
         data={filteredData}
-        emptyMessage="No Customers found"
+        emptyMessage="No Vendors found"
       />
 
       <GenericModal
@@ -163,6 +203,8 @@ export default function VendersPage() {
           { id: "email", label: "Email" },
           { id: "address", label: "Address" },
         ]}
+        loading={apiLoading}
+        error={apiError}
       />
     </Box>
   );
