@@ -8,14 +8,27 @@ const appendIfPresent = (formData, key, value) => {
 const assertApiSuccess = (payload, fallbackMessage) => {
   if (typeof payload?.success === "boolean") {
     if (!payload.success) {
-      throw new Error(payload?.message || payload?.error || fallbackMessage);
+      const errorMessage =
+        payload?.message || payload?.error || fallbackMessage;
+      // Handle "not found" gracefully - return empty instead of throwing
+      if (errorMessage?.toLowerCase().includes("not found")) {
+        return;
+      }
+      throw new Error(errorMessage);
     }
     return;
   }
 
-  const status = String(payload?.status ?? "").trim().toLowerCase();
+  const status = String(payload?.status ?? "")
+    .trim()
+    .toLowerCase();
   if (status && status !== "success") {
-    throw new Error(payload?.message || payload?.error || fallbackMessage);
+    const errorMessage = payload?.message || payload?.error || fallbackMessage;
+    // Handle "not found" gracefully - return empty instead of throwing
+    if (errorMessage?.toLowerCase().includes("not found")) {
+      return;
+    }
+    throw new Error(errorMessage);
   }
 };
 
@@ -67,4 +80,3 @@ export const fetchEmployeesApi = async () => {
 
   return normalizeListPayload(listPayload);
 };
-

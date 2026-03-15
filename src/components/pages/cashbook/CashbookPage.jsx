@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useContext } from "react";
+// import React, { useState, useEffect } from "react";
 import { Edit, Plus } from "lucide-react";
 import GenericModal from "@/components/generic/GenericModal";
 import AccountListItem from "./AccountListItem";
 import { Button } from "@mui/material";
+// import { useContext } from "react";
 import { CompanyContext } from "@/context/CompanyContext";
 import UBL from "../../assets/banksLogos/UBL.png";
 import HBL from "../../assets/banksLogos/HBL.png";
@@ -10,6 +12,7 @@ import FaisalBank from "../../assets/banksLogos/fb.png";
 import StandardCharter from "../../assets/banksLogos/SC.png";
 import BankOfPunjab from "../../assets/banksLogos/BOP.png";
 import BankOfIslami from "../../assets/banksLogos/EP.jpg";
+
 import {
   addBankAccountApi,
   fetchBankAccountsApi,
@@ -25,13 +28,13 @@ const BANK_OPTIONS = [
     image: UBL,
     type: "ubl",
     bankId: 1,
+    type: "ubl",
   },
   {
     label: "HBL",
     value: "HBL",
     image: HBL,
     type: "hbl",
-    bankId: 2,
   },
   {
     label: "Faisal Bank",
@@ -136,9 +139,9 @@ export default function CashbookPage() {
   const [apiLoading, setApiLoading] = useState(false);
   const [apiError, setApiError] = useState("");
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
-  }, [accounts]);
+  // useEffect(() => {
+  //   localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+  // }, [accounts]);
 
   useEffect(() => {
     let isMounted = true;
@@ -239,7 +242,9 @@ export default function CashbookPage() {
           created?.bankAccountId ??
           Date.now(),
         name:
-          created?.account_title ?? created?.accountTitle ?? formData.accountName,
+          created?.account_title ??
+          created?.accountTitle ??
+          formData.accountName,
         bankLabel: formData.selectBank,
         bankType: selectedBank.type,
         bankImage: selectedBank.image,
