@@ -1,6 +1,13 @@
-import { useState, useContext, useMemo } from "react";
+import { useState, useContext, useMemo, useEffect } from "react";
 import Box from "@mui/material/Box";
-import { Button, Collapse, useTheme, useMediaQuery } from "@mui/material";
+import {
+  Button,
+  Collapse,
+  useTheme,
+  useMediaQuery,
+  Alert,
+  CircularProgress,
+} from "@mui/material";
 import { Add, FilterList } from "@mui/icons-material";
 import GenericTable from "@/components/generic/GenericTable";
 import GenericModal from "@/components/generic/GenericModal";
@@ -9,10 +16,14 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import GenericDateField from "@/components/generic/GenericDateField";
 import { DataContext } from "@/context/DataContext";
+import {
+  addIncomeTransactionApi,
+  fetchTransactionsApi,
+} from "@/services/transactionApi";
 
 const tableColumns = [
   { id: "voucher", label: "Voucher#", width: "10%" },
-  { id: "customerName", label: "Entity Name", width: "18%" },
+  { id: "entityName", label: "Entity Name", width: "18%" },
   { id: "accountHead", label: "Account Head", width: "16%" },
   { id: "paymentMethod", label: "Payment Method", width: "16%" },
   { id: "date", label: "Date", width: "14%" },
@@ -30,36 +41,187 @@ const paymentOptions = [
 ];
 
 export default function IncomePage() {
-  const { income, addIncome, updateIncome, customers } =
-    useContext(DataContext);
+  const { customers, vendors, employees } = useContext(DataContext);
+  const [incomeData, setIncomeData] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [customerName, setCustomerName] = useState("");
+  const [entityName, setEntityName] = useState("");
   const [accountHead, setAccountHead] = useState("");
   const [searchDate, setSearchDate] = useState("");
   const [selectedRow, setSelectedRow] = useState(null);
   const [modalMode, setModalMode] = useState("add");
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
+  const [fetchLoading, setFetchLoading] = useState(true);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const handleAddIncome = (formData) => {
-    const newVoucher = String(income.length + 1).padStart(2, "0");
+  // Helper function to resolve entity name from context based on entity type and user_id
+  const resolveEntityName = (item) => {
+    // First check if the API response includes a name field
+    if (
+      item.customer_name ||
+      item.entity_name ||
+      item.vendor_name ||
+      item.employee_name
+    ) {
+      return (
+        item.customer_name ||
+        item.entity_name ||
+        item.vendor_name ||
+        item.employee_name
+      );
+    }
 
-    const newEntry = {
-      voucher: newVoucher,
-      customerName: formData.customerName || "",
-      accountHead: formData.accountHead || "",
-      paymentMethod: formData.paymentMethod || "",
-      date: new Date().toISOString().split("T")[0],
-      status: "Invoiced",
-      amount: Number(formData.amount || 0),
-      description: formData.description || "",
-      file: formData.file || null,
+    // If no name in API response, the entity name might be stored but not shown,
+    // Log a warning for debugging
+    console.warn(
+      `API response missing entity name for item:`,
+      item,
+      `- Please check if API should return customer_name/vendor_name`,
+    );
+
+    return "[Entity Name Not Provided]";
+  };
+
+  // Fetch income data from API on component mount
+  useEffect(() => {
+    const fetchIncomeData = async () => {
+      try {
+        setFetchLoading(true);
+        const data = await fetchTransactionsApi("income");
+        console.log("Raw API Response:", data);
+
+        // Map API response to match table columns
+        const mappedData = (Array.isArray(data) ? data : []).map(
+          (item, index) => {
+            // Extract date from created_at if available
+            let displayDate = new Date().toISOString().split("T")[0];
+            if (item.created_at) {
+              displayDate = item.created_at.split(" ")[0]; // Extract date part from "2026-03-15 20:07:48"
+            } else if (item.date || item.transaction_date) {
+              displayDate = item.date || item.transaction_date;
+            }
+
+            return {
+              id: item.id || item.transaction_id || index,
+              voucher:
+                item.voucher ||
+                item.voucher_no ||
+                String(index + 1).padStart(2, "0"),
+              // Resolve entity name using helper function
+              entityName: resolveEntityName(item),
+              accountHead:
+                item.account_head || item.accountHead || item.head || "",
+              paymentMethod:
+                item.payment_method || item.paymentMethod || item.method || "",
+              date: displayDate,
+              status: item.status || "Invoiced",
+              amount: Number(item.amount || 0),
+              description: item.description || "",
+              entityType: item.entity || item.entityType || "customer", // Store entity type for reference
+            };
+          },
+        );
+
+        console.log("Mapped Data:", mappedData);
+        setIncomeData(mappedData);
+      } catch (error) {
+        console.error("Error fetching income data:", error);
+        setApiError("Failed to load income data from server: " + error.message);
+      } finally {
+        setFetchLoading(false);
+      }
     };
 
-    addIncome(newEntry);
-    setIsModalOpen(false);
+    fetchIncomeData();
+  }, []);
+
+  // Create entity options combining customers, vendors, and employees
+  const entityOptions = [
+    ...customers.map((c) => ({
+      label: c.entityName || c.customerName,
+      value: c.entityName || c.customerName,
+      type: "customer",
+    })),
+    ...vendors.map((v) => ({
+      label: v.vendorName || v.venderName,
+      value: v.vendorName || v.venderName,
+      type: "vendor",
+    })),
+    ...employees.map((e) => ({
+      label: e.employeeName,
+      value: e.employeeName,
+      type: "employee",
+    })),
+  ];
+
+  const handleAddIncome = async (formData) => {
+    setLoading(true);
+    setApiError("");
+
+    try {
+      // Determine entity type based on selection
+      const selectedEntity = entityOptions.find(
+        (opt) => opt.value === formData.entityName,
+      );
+      const entityType = selectedEntity?.type || "customer";
+
+      // Prepare transaction data for API
+      const transactionData = {
+        entity: entityType,
+        accountHead: formData.accountHead || "",
+        accountHeadId: undefined, // Will be generated from accountHead name
+        customerName: formData.entityName || "",
+        paymentMethod: formData.paymentMethod || "",
+        amount: Number(formData.amount || 0),
+        description: formData.description || "",
+        file: formData.file || null,
+      };
+
+      // Validate required fields
+      if (!transactionData.accountHead) {
+        setApiError("Account Head is required");
+        setLoading(false);
+        return;
+      }
+
+      if (!transactionData.customerName) {
+        setApiError("Entity Name is required");
+        setLoading(false);
+        return;
+      }
+
+      // Call the API to add transaction
+      const apiResponse = await addIncomeTransactionApi(transactionData);
+      console.log("API Response:", apiResponse);
+
+      // Create local entry after API success (without file data to avoid storage quota issues)
+      const newVoucher = String(incomeData.length + 1).padStart(2, "0");
+      const newEntry = {
+        voucher: newVoucher,
+        entityName: formData.entityName || "",
+        accountHead: formData.accountHead || "",
+        paymentMethod: formData.paymentMethod || "",
+        date: new Date().toISOString().split("T")[0],
+        status: "Invoiced",
+        amount: Number(formData.amount || 0),
+        description: formData.description || "",
+        // Don't store file data locally to avoid localStorage quota exceeded
+        apiResponse: apiResponse, // Store API response
+      };
+
+      setIncomeData((prev) => [newEntry, ...prev]);
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Error adding income transaction:", error);
+      setApiError(
+        error.message || "Failed to add income transaction. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEditIncome = (formData) => {
@@ -71,7 +233,10 @@ export default function IncomePage() {
       description: formData.description || "",
       file: formData.file || selectedRow.file || null,
     };
-    updateIncome(selectedRow.id, updatedEntry);
+    // Update incomeData instead of context
+    setIncomeData((prev) =>
+      prev.map((item) => (item.id === selectedRow.id ? updatedEntry : item)),
+    );
     setIsModalOpen(false);
     setSelectedRow(null);
     setModalMode("add");
@@ -91,12 +256,12 @@ export default function IncomePage() {
     return `Rs. ${Number(amount || 0).toLocaleString()}`;
   };
   const filteredData = useMemo(() => {
-    return income.filter((item) => {
+    return incomeData.filter((item) => {
       return (
-        (customerName === "" ||
-          (item.customerName || "")
+        (entityName === "" ||
+          (item.entityName || "")
             .toLowerCase()
-            .includes(customerName.toLowerCase())) &&
+            .includes(entityName.toLowerCase())) &&
         (accountHead === "" ||
           (item.accountHead || "")
             .toLowerCase()
@@ -105,7 +270,7 @@ export default function IncomePage() {
           new Date(item.date).toISOString().split("T")[0] === searchDate)
       );
     });
-  }, [income, customerName, accountHead, searchDate]);
+  }, [incomeData, entityName, accountHead, searchDate]);
 
   const handleModalClose = (open) => {
     setIsModalOpen(open);
@@ -117,53 +282,69 @@ export default function IncomePage() {
 
   return (
     <Box className="space-y-4">
-      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-        <Button
-          variant="contained"
-          startIcon={<FilterList />}
-          onClick={() => setShowFilters((prev) => !prev)}
-        >
-          {showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        </Button>
+      {apiError && (
+        <Alert severity="error" onClose={() => setApiError("")} sx={{ mb: 2 }}>
+          {apiError}
+        </Alert>
+      )}
+      {fetchLoading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : incomeData.length === 0 ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          No income data found. Click "Add" to create a new income entry.
+        </Alert>
+      ) : null}
+      {!fetchLoading && (
+        <>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+            <Button
+              variant="contained"
+              startIcon={<FilterList />}
+              onClick={() => setShowFilters((prev) => !prev)}
+            >
+              {showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </Button>
 
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => {
-            setModalMode("add");
-            setSelectedRow(null);
-            setIsModalOpen(true);
-          }}
-          sx={{
-            backgroundColor: "#1B0D3F",
-            color: "#FFFFFF",
-            fontWeight: 600,
-            fontSize: 14,
-            px: 2.5,
-            "&:hover": { backgroundColor: "#2D1B69" },
-          }}
-        >
-          Add
-        </Button>
-      </Box>
-      <Collapse in={showFilters}>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "1fr 1fr",
-              md: "1fr 1fr 1fr 0.5fr",
-            },
-            gap: 2,
-            width: "100%",
-            mt: 2,
-            p: isMobile ? 2 : 0,
-            backgroundColor: isMobile ? "#f9f9f9" : "transparent",
-            borderRadius: isMobile ? 1 : 0,
-          }}
-        >
-          {/* <GenericSelectField
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => {
+                setModalMode("add");
+                setSelectedRow(null);
+                setIsModalOpen(true);
+              }}
+              sx={{
+                backgroundColor: "#1B0D3F",
+                color: "#FFFFFF",
+                fontWeight: 600,
+                fontSize: 14,
+                px: 2.5,
+                "&:hover": { backgroundColor: "#2D1B69" },
+              }}
+            >
+              Add
+            </Button>
+          </Box>
+          <Collapse in={showFilters}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "1fr 1fr",
+                  md: "1fr 1fr 1fr 0.5fr",
+                },
+                gap: 2,
+                width: "100%",
+                mt: 2,
+                p: isMobile ? 2 : 0,
+                backgroundColor: isMobile ? "#f9f9f9" : "transparent",
+                borderRadius: isMobile ? 1 : 0,
+              }}
+            >
+              {/* <GenericSelectField
             label="Customer Name"
             value={customerName}
             onChange={(e) => setCustomerName(e.target.value)}
@@ -172,119 +353,164 @@ export default function IncomePage() {
               value: c.customerName,
             }))}
           /> */}
-          <GenericSelectField
-            label="Customer Name"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            options={[
-              ...new Set([
-                ...income.map((item) => item.customerName),
-                ...customers.map((c) => c.customerName),
-              ]),
-            ].map((name) => ({
-              label: name,
-              value: name,
-            }))}
-          />
-          <GenericSelectField
-            label="Account Head"
-            value={accountHead}
-            onChange={(e) => setAccountHead(e.target.value)}
-            options={[...new Set(income.map((item) => item.accountHead))].map(
-              (name) => ({
-                label: name,
-                value: name,
-              }),
-            )}
-          />
-          <GenericDateField
-            value={searchDate}
-            onChange={(valOrEvent) =>
-              setSearchDate(valOrEvent?.target?.value ?? valOrEvent ?? "")
-            }
-          />
+              <GenericSelectField
+                label="Entity Name"
+                value={entityName}
+                onChange={(e) => setEntityName(e.target.value)}
+                options={[
+                  ...new Set([
+                    ...incomeData.map((item) => item.entityName),
+                    ...entityOptions.map((opt) => opt.value),
+                  ]),
+                ].map((name) => ({
+                  label: name,
+                  value: name,
+                }))}
+              />
+              <GenericSelectField
+                label="Account Head"
+                value={accountHead}
+                onChange={(e) => setAccountHead(e.target.value)}
+                options={[
+                  ...new Set(incomeData.map((item) => item.accountHead)),
+                ].map((name) => ({
+                  label: name,
+                  value: name,
+                }))}
+              />
+              <GenericDateField
+                value={searchDate}
+                onChange={(valOrEvent) =>
+                  setSearchDate(valOrEvent?.target?.value ?? valOrEvent ?? "")
+                }
+              />
 
-          <Button
-            variant="contained"
-            sx={{
-              borderRadius: 0.5,
-              backgroundColor: "#1B0D3F",
-              "&:hover": { backgroundColor: "#2D1B69" },
+              <Button
+                variant="contained"
+                sx={{
+                  borderRadius: 0.5,
+                  backgroundColor: "#1B0D3F",
+                  "&:hover": { backgroundColor: "#2D1B69" },
+                }}
+              >
+                Search
+              </Button>
+            </Box>
+          </Collapse>
+
+          <GenericTable
+            columns={tableColumns}
+            data={filteredData.map((item) => {
+              console.log("Rendering table item:", item);
+              return {
+                ...item,
+                amount: formatCurrency(item.amount),
+              };
+            })}
+            emptyMessage="No income entries found"
+            onRowClick={(row) => {
+              setSelectedRow(row);
+              setModalMode("detail-actions");
+              setIsModalOpen(true);
             }}
-          >
-            Search
-          </Button>
-        </Box>
-      </Collapse>
+          />
+          <GenericModal
+            open={isModalOpen}
+            onOpenChange={handleModalClose}
+            title={
+              modalMode === "add"
+                ? "Add Income Detail"
+                : modalMode === "edit"
+                  ? "Edit Income Detail"
+                  : "Income Detail"
+            }
+            mode={modalMode}
+            columns={2}
+            showAddFileButton={modalMode === "add" || modalMode === "edit"}
+            selectedRow={selectedRow}
+            onSubmit={modalMode === "edit" ? handleEditIncome : handleAddIncome}
+            showFileUpload={modalMode === "add" || modalMode === "edit"}
+            loading={loading}
+            error={apiError}
+            fields={
+              modalMode === "add" || modalMode === "edit"
+                ? [
+                    {
+                      id: "entityName",
+                      label: "Entity Name",
+                      type: "select",
+                      options: entityOptions,
+                      renderOption: (props, option) => {
+                        const color =
+                          option.type === "employee"
+                            ? "#4caf50"
+                            : option.type === "vendor"
+                              ? "#ff9800"
+                              : "#2196f3";
 
-      <GenericTable
-        columns={tableColumns}
-        data={filteredData.map((item) => ({
-          ...item,
-          amount: formatCurrency(item.amount),
-        }))}
-        emptyMessage="No income entries found"
-        onRowClick={(row) => {
-          setSelectedRow(row);
-          setModalMode("detail-actions");
-          setIsModalOpen(true);
-        }}
-      />
-      <GenericModal
-        open={isModalOpen}
-        onOpenChange={handleModalClose}
-        title={
-          modalMode === "add"
-            ? "Add Income Detail"
-            : modalMode === "edit"
-              ? "Edit Income Detail"
-              : "Income Detail"
-        }
-        mode={modalMode}
-        columns={2}
-        showAddFileButton={modalMode === "add" || modalMode === "edit"}
-        selectedRow={selectedRow}
-        onSubmit={modalMode === "edit" ? handleEditIncome : handleAddIncome}
-        showFileUpload={modalMode === "add" || modalMode === "edit"}
-        fields={
-          modalMode === "add" || modalMode === "edit"
-            ? [
-                {
-                  id: "customerName",
-                  label: "Customer Name",
-                  type: "select",
-                  options: customers.map((c) => c.customerName),
-                },
-                { id: "accountHead", label: "Account Head" },
-                {
-                  id: "paymentMethod",
-                  label: "Payment Method",
-                  type: "select",
-                  options: paymentOptions,
-                },
-                { id: "amount", label: "Amount" },
-                {
-                  id: "description",
-                  label: "Description",
-                  type: "textarea",
-                  rows: 2,
-                  fullWidth: true,
-                },
-              ]
-            : [
-                { id: "customerName", label: "Customer Name" },
-                { id: "accountHead", label: "Account Head" },
-                { id: "paymentMethod", label: "Payment Method" },
-                { id: "date", label: "Date" },
-                { id: "amount", label: "Amount" },
-              ]
-        }
-        onPrint={() => window.print()}
-        onShare={() => console.log("Share clicked")}
-        onSave={() => console.log("Save clicked")}
-        onEdit={handleOnEdit}
-        onCopy={handleCopyIncome}
-      />
+                        return (
+                          <li {...props}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                width: "100%",
+                              }}
+                            >
+                              {option.label}
+
+                              <Box
+                                sx={{
+                                  ml: "auto",
+                                  px: 1,
+                                  py: 0.2,
+                                  borderRadius: "12px",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  backgroundColor: color,
+                                  color: "white",
+                                  textTransform: "capitalize",
+                                }}
+                              >
+                                {option.type}
+                              </Box>
+                            </Box>
+                          </li>
+                        );
+                      },
+                    },
+                    { id: "accountHead", label: "Account Head" },
+                    {
+                      id: "paymentMethod",
+                      label: "Payment Method",
+                      type: "select",
+                      options: paymentOptions,
+                    },
+                    { id: "amount", label: "Amount" },
+                    {
+                      id: "description",
+                      label: "Description",
+                      type: "textarea",
+                      rows: 2,
+                      fullWidth: true,
+                    },
+                  ]
+                : [
+                    { id: "entityName", label: "Entity Name" },
+                    { id: "accountHead", label: "Account Head" },
+                    { id: "paymentMethod", label: "Payment Method" },
+                    { id: "date", label: "Date" },
+                    { id: "amount", label: "Amount" },
+                  ]
+            }
+            onPrint={() => window.print()}
+            onShare={() => console.log("Share clicked")}
+            onSave={() => console.log("Save clicked")}
+            onEdit={handleOnEdit}
+            onCopy={handleCopyIncome}
+          />
+        </>
+      )}
     </Box>
   );
 }

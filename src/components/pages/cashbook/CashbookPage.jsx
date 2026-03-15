@@ -28,13 +28,13 @@ const BANK_OPTIONS = [
     image: UBL,
     type: "ubl",
     bankId: 1,
-    type: "ubl",
   },
   {
     label: "HBL",
     value: "HBL",
     image: HBL,
     type: "hbl",
+    bankId: 2,
   },
   {
     label: "Faisal Bank",
