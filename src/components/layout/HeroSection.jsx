@@ -4,12 +4,14 @@ import Button from "@mui/material/Button";
 import Avatar from "@mui/material/Avatar";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
+import Typography from "@mui/material/Typography";
 import { useTab } from "@/context/TabContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import logo from "@/components/assets/logo.png";
@@ -42,6 +44,7 @@ export default function HeroSection() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { logout } = useAuth();
+  const { currentAccount, accounts } = useAuth();
   const handleCreate = (path) => {
     setCreateAnchor(null);
     navigate(path);
@@ -345,38 +348,91 @@ export default function HeroSection() {
         </Box>
       )}
 
-      {/* User Avatar */}
-      <Avatar
+      {/* User Avatar with Account Info */}
+      <Box
         sx={{
-          width: 40,
-          height: 40,
-          bgcolor: "#1B0D3F",
-          flexShrink: 0,
-          cursor: "pointer",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 0.5,
         }}
-        onClick={(e) => setCreateAnchor(e.currentTarget)}
       >
-        U
-      </Avatar>
+        <Avatar
+          sx={{
+            width: 40,
+            height: 40,
+            bgcolor: "#1B0D3F",
+            flexShrink: 0,
+            cursor: "pointer",
+            fontSize: "0.9rem",
+            fontWeight: 600,
+          }}
+          onClick={(e) => setCreateAnchor(e.currentTarget)}
+        >
+          {currentAccount?.label
+            ? currentAccount.label.charAt(0).toUpperCase()
+            : currentAccount?.email
+              ? currentAccount.email.charAt(0).toUpperCase()
+              : "U"}
+        </Avatar>
+        {currentAccount && (
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#1B0D3F",
+              fontWeight: 500,
+              maxWidth: 100,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              textAlign: "center",
+            }}
+          >
+            {currentAccount.label || currentAccount.email}
+          </Typography>
+        )}
+      </Box>
 
       <Menu
         anchorEl={createAnchor}
         open={Boolean(createAnchor)}
         onClose={() => setCreateAnchor(null)}
       >
+        {currentAccount && (
+          <MenuItem disabled sx={{ opacity: 1, cursor: "default" }}>
+            <Box sx={{ py: 0.5 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{ fontWeight: 600, color: "#1B0D3F" }}
+              >
+                {currentAccount.label || currentAccount.email}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {currentAccount.email}
+              </Typography>
+            </Box>
+          </MenuItem>
+        )}
+        {currentAccount && <Divider />}
         <MenuItem
           sx={{ fontWeight: 600 }}
-          onClick={() => handleCreate("/account-settings")}
+          onClick={() => {
+            setCreateAnchor(null);
+            navigate("/account-settings");
+          }}
         >
           Accounts Settings
         </MenuItem>
         <MenuItem
           sx={{ fontWeight: 600 }}
-          // onClick={() => handleCreate("/customers")}
+          onClick={() => {
+            setCreateAnchor(null);
+            navigate("/switch-account");
+          }}
         >
           Switch Account
         </MenuItem>
-        <MenuItem sx={{ fontWeight: 600 }} onClick={logout}>
+        <MenuItem sx={{ fontWeight: 600, color: "#f44336" }} onClick={logout}>
           Logout
         </MenuItem>
       </Menu>

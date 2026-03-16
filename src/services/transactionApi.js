@@ -181,7 +181,7 @@ export const fetchTransactionsApi = async (type = "income") => {
     const res = await apiClient.post("/transaction_api.php", formData);
     const payload = res?.data ?? {};
 
-    console.log(`Fetched ${type} transactions - Raw payload:`, payload);
+    // console.log(`Fetched ${type} transactions - Raw payload:`, payload);
 
     // Try to extract data from various possible response structures
     let listPayload = null;
@@ -206,7 +206,7 @@ export const fetchTransactionsApi = async (type = "income") => {
       listPayload = [];
     }
 
-    console.log(`Extracted ${type} list:`, listPayload);
+    // console.log(`Extracted ${type} list:`, listPayload);
 
     // Extract nested transaction objects - API returns items with nested 'transaction' property
     const extractedTransactions = listPayload.map((item) => {
@@ -218,10 +218,10 @@ export const fetchTransactionsApi = async (type = "income") => {
       return item;
     });
 
-    console.log(
-      `Processed ${type} transactions (extracted nested data):`,
-      extractedTransactions,
-    );
+    // console.log(
+    //   `Processed ${type} transactions (extracted nested data):`,
+    //   extractedTransactions,
+    // );
     return Array.isArray(extractedTransactions) ? extractedTransactions : [];
   } catch (error) {
     console.error(`Error fetching ${type} transactions:`, error);

@@ -259,7 +259,7 @@ const AccountSetting = () => {
                   startIcon={<SaveIcon />}
                   onClick={handleSaveProfile}
                   sx={{
-                    backgroundColor: "#4CAF50",
+                    backgroundColor: "#1B0D3F",
                     color: "white",
                     textTransform: "none",
                     fontWeight: 600,
@@ -410,7 +410,7 @@ const AccountSetting = () => {
                   startIcon={<SaveIcon />}
                   onClick={handleSaveCompany}
                   sx={{
-                    backgroundColor: "#4CAF50",
+                    backgroundColor: "#1B0D3F",
                     color: "white",
                     textTransform: "none",
                     fontWeight: 600,
@@ -532,7 +532,7 @@ const AccountSetting = () => {
                     startIcon={<SaveIcon />}
                     onClick={handleSavePassword}
                     sx={{
-                      backgroundColor: "#4CAF50",
+                      backgroundColor: "#1B0D3F",
                       color: "white",
                       textTransform: "none",
                       fontWeight: 600,
@@ -595,44 +595,6 @@ const AccountSetting = () => {
                     gap: 1.5,
                   }}
                 >
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        name="emailNotifications"
-                        checked={preferences.emailNotifications}
-                        onChange={handlePreferenceChange}
-                        sx={{
-                          "& .MuiSwitch-switchBase.Mui-checked": {
-                            color: "#4CAF50",
-                          },
-                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
-                            {
-                              backgroundColor: "#4CAF50",
-                            },
-                        }}
-                      />
-                    }
-                    label="Email Notifications"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        name="smsNotifications"
-                        checked={preferences.smsNotifications}
-                        onChange={handlePreferenceChange}
-                        sx={{
-                          "& .MuiSwitch-switchBase.Mui-checked": {
-                            color: "#4CAF50",
-                          },
-                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
-                            {
-                              backgroundColor: "#4CAF50",
-                            },
-                        }}
-                      />
-                    }
-                    label="SMS Notifications"
-                  />
                   <FormControlLabel
                     control={
                       <Switch
@@ -740,7 +702,7 @@ const AccountSetting = () => {
               <Button
                 variant="contained"
                 sx={{
-                  backgroundColor: "#4CAF50",
+                  backgroundColor: "#1B0D3F",
                   color: "white",
                   textTransform: "none",
                   fontWeight: 600,

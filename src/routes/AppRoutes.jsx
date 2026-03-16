@@ -23,6 +23,7 @@ import SignupPage from "@/components/auth/SignupPage";
 
 import OtpPage from "@/components/auth/OtpPage";
 import AccountSetting from "@/components/pages/accountPages/AccountSetting";
+import SwitchAccount from "@/components/pages/accountPages/SwitchAccount";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
 
@@ -84,6 +85,7 @@ export default function AppRoutes() {
         <Route path="cash-in-out" element={<CashInOutPage />} />
         <Route path="ledger" element={<LedgerPage />} />
         <Route path="account-settings" element={<AccountSetting />} />
+        <Route path="/switch-account" element={<SwitchAccount />} />
         {/* Catch-all for undefined routes */}
         <Route path="*" element={<PageNotFound />} />
       </Route>

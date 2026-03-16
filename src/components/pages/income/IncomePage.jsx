@@ -76,11 +76,11 @@ export default function IncomePage() {
 
     // If no name in API response, the entity name might be stored but not shown,
     // Log a warning for debugging
-    console.warn(
-      `API response missing entity name for item:`,
-      item,
-      `- Please check if API should return customer_name/vendor_name`,
-    );
+    // console.warn(
+    //   `API response missing entity name for item:`,
+    //   item,
+    //   `- Please check if API should return customer_name/vendor_name`,
+    // );
 
     return "[Entity Name Not Provided]";
   };
@@ -91,7 +91,7 @@ export default function IncomePage() {
       try {
         setFetchLoading(true);
         const data = await fetchTransactionsApi("income");
-        console.log("Raw API Response:", data);
+        // console.log("Raw API Response:", data);
 
         // Map API response to match table columns
         const mappedData = (Array.isArray(data) ? data : []).map(
@@ -125,7 +125,7 @@ export default function IncomePage() {
           },
         );
 
-        console.log("Mapped Data:", mappedData);
+        // console.log("Mapped Data:", mappedData);
         setIncomeData(mappedData);
       } catch (error) {
         console.error("Error fetching income data:", error);
@@ -427,7 +427,7 @@ export default function IncomePage() {
           <GenericTable
             columns={tableColumns}
             data={filteredData.map((item) => {
-              console.log("Rendering table item:", item);
+              // console.log("Rendering table item:", item);
               return {
                 ...item,
                 amount: formatCurrency(item.amount),

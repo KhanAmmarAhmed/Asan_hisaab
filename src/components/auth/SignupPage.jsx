@@ -18,12 +18,8 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import HomeIcon from "@mui/icons-material/Home";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import MarkEmailReadIcon from "@mui/icons-material/MarkEmailRead";
-import { sendOtp, signupUser } from "../../services/authApi";
-import { useAuth } from "../../context/AuthContext";
 
 const SignupPage = () => {
-  const { login } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -32,11 +28,9 @@ const SignupPage = () => {
     password: "",
     number: "",
     address: "",
-    otp: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,68 +39,19 @@ const SignupPage = () => {
     setError("");
   };
 
-  const handleSendOtp = async () => {
-    if (!form.email) {
-      setError("Please enter your email");
-      return;
-    }
-    try {
-      const res = await sendOtp(form.email);
-      if (res.status === "success") {
-        setOtpSent(true);
-        setError("");
-      } else {
-        setError(res.message || "Failed to send OTP");
-      }
-    } catch (err) {
-      setError("Failed to send OTP");
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const requiredFields = [
-      "name",
-      "email",
-      "password",
-      "otp",
-      "number",
-      "address",
-    ];
+    const requiredFields = ["name", "email", "password", "number", "address"];
     const missing = requiredFields.filter((field) => !form[field]);
 
     if (missing.length > 0) {
-      setError("Please fill in required fields");
+      setError("Please fill in all required fields");
       return;
     }
 
-    // if (!otpSent) {
-    //   setError("Please send OTP to your email first");
-    //   return;
-    // }
-
-    if (!form.otp) {
-      setError("Please enter OTP");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await signupUser(form);
-
-      if (res.status === "success") {
-        login(res);
-        navigate("/dashboard");
-      } else {
-        setError(res.message || "Signup failed");
-      }
-    } catch (err) {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-
+    // Just navigate to OTP page - OTP will be sent from there
+    navigate("/otp", { state: { userData: form } });
   };
 
   return (
@@ -149,7 +94,6 @@ const SignupPage = () => {
                 label="Full Name"
                 value={form.name}
                 onChange={handleChange}
-
                 required
                 InputProps={{
                   startAdornment: (
@@ -161,63 +105,18 @@ const SignupPage = () => {
               />
             </Grid>
 
-
-            <Grid item xs={12} sm={8}>
+            <Grid item xs={12} sm={12}>
               <TextField
                 fullWidth
                 name="email"
                 label="Email Address"
                 value={form.email}
                 onChange={handleChange}
-
                 required
-                disabled={otpSent}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
                       <EmailIcon sx={{ color: "#666" }} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={4}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={handleSendOtp}
-                disabled={!form.email}
-                sx={{
-                  height: "56px",
-                  borderColor: "#1B0D3F",
-                  color: "#1B0D3F",
-                  "&:hover": {
-                    borderColor: "#2D1B69",
-                    backgroundColor: "rgba(27, 13, 63, 0.04)",
-                  },
-                }}
-              >
-                {otpSent ? "Resend OTP" : "Send OTP"}
-              </Button>
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                name="otp"
-                label="Enter OTP"
-                value={form.otp}
-                onChange={handleChange}
-                // disabled={!otpSent}
-                helperText={
-                  otpSent ? "OTP is valid for 5 minutes" : ""
-                  // : "Send OTP to enable this field"
-                }
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <MarkEmailReadIcon sx={{ color: "#666" }} />
                     </InputAdornment>
                   ),
                 }}
@@ -313,7 +212,7 @@ const SignupPage = () => {
               fontWeight: 600,
             }}
           >
-            {loading ? "Creating Account..." : "Create Account"}
+            {loading ? "Signing Up..." : "Sign Up"}
           </Button>
 
           <Typography variant="body2" sx={{ textAlign: "center" }}>
