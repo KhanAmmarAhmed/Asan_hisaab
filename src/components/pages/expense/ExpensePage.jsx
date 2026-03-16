@@ -31,7 +31,8 @@ const paymentOptions = [
 
 const ExpensePage = () => {
   // const { expenses, addExpense, updateExpense, customers } = useContext(DataContext);
-  const { expenses, addExpense, updateExpense, customers, vendors, employees } = useContext(DataContext);
+  const { expenses, addExpense, updateExpense, customers, vendors, employees } =
+    useContext(DataContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [entityName, setentityName] = useState("");
@@ -43,38 +44,51 @@ const ExpensePage = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const handleAddExpense = (formData) => {
-    const newVoucher = String(expenses.length + 1).padStart(2, "0");
+  const handleAddExpense = async (formData) => {
+    try {
+      const newVoucher = String(expenses.length + 1).padStart(2, "0");
 
-    const newEntry = {
-      voucher: newVoucher,
-      entityName: formData.entityName || "",
-      accountHead: formData.accountHead || "",
-      paymentMethod: formData.paymentMethod || "",
-      date: new Date().toISOString().split("T")[0],
-      status: "Invoiced",
-      amount: Number(formData.amount || 0),
-      description: formData.description || "",
-      file: formData.file || null,
-    };
+      const newEntry = {
+        voucher: newVoucher,
+        entityName: formData.entityName || "",
+        accountHead: formData.accountHead || "",
+        paymentMethod: formData.paymentMethod || "",
+        date: new Date().toISOString().split("T")[0],
+        status: "Invoiced",
+        amount: Number(formData.amount || 0),
+        description: formData.description || "",
+        // Don't store file data locally - only store filename to avoid localStorage quota exceeded
+        fileName: formData.file?.name || null,
+      };
 
-    addExpense(newEntry);
-    setIsModalOpen(false);
+      addExpense(newEntry);
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Error adding expense:", error);
+      alert("Failed to add expense. Please try again.");
+    }
   };
 
-  const handleEditExpense = (formData) => {
+  const handleEditExpense = async (formData) => {
     if (!selectedRow) return;
-    const updatedEntry = {
-      ...selectedRow,
-      ...formData,
-      amount: Number(formData.amount || 0),
-      description: formData.description || "",
-      file: formData.file || selectedRow.file || null,
-    };
-    updateExpense(selectedRow.id, updatedEntry);
-    setIsModalOpen(false);
-    setSelectedRow(null);
-    setModalMode("add");
+    try {
+      const updatedEntry = {
+        ...selectedRow,
+        ...formData,
+        amount: Number(formData.amount || 0),
+        description: formData.description || "",
+        // Don't store file data locally - only store filename
+        fileName: formData.file?.name || selectedRow.fileName || null,
+      };
+
+      updateExpense(selectedRow.id, updatedEntry);
+      setIsModalOpen(false);
+      setSelectedRow(null);
+      setModalMode("add");
+    } catch (error) {
+      console.error("Error updating expense:", error);
+      alert("Failed to update expense. Please try again.");
+    }
   };
 
   const handleCopyExpense = () => {
@@ -93,21 +107,21 @@ const ExpensePage = () => {
   };
 
   const entityOptions = [
-    ...customers.map(c => ({
+    ...customers.map((c) => ({
       label: c.entityName || c.customerName,
       value: c.entityName || c.customerName,
-      type: "customer"
+      type: "customer",
     })),
-    ...vendors.map(v => ({
+    ...vendors.map((v) => ({
       label: v.vendorName || v.venderName,
       value: v.vendorName || v.venderName,
-      type: "vendor"
+      type: "vendor",
     })),
-    ...employees.map(e => ({
+    ...employees.map((e) => ({
       label: e.employeeName,
       value: e.employeeName,
-      type: "employee"
-    }))
+      type: "employee",
+    })),
   ];
 
   const filteredData = useMemo(() => {
@@ -246,7 +260,13 @@ const ExpensePage = () => {
       <GenericModal
         open={isModalOpen}
         onOpenChange={handleModalClose}
-        title={modalMode === "add" ? "Add Expense Detail" : modalMode === "edit" ? "Edit Expense Detail" : "Expense Detail"}
+        title={
+          modalMode === "add"
+            ? "Add Expense Detail"
+            : modalMode === "edit"
+              ? "Edit Expense Detail"
+              : "Expense Detail"
+        }
         mode={modalMode}
         columns={2}
         showFileUpload={modalMode === "add" || modalMode === "edit"}
@@ -255,68 +275,75 @@ const ExpensePage = () => {
         fields={
           modalMode === "add" || modalMode === "edit"
             ? [
-              {
-                id: "entityName",
-                label: "Entity Name",
-                type: "select",
-                options: entityOptions,
-                renderOption: (props, option) => {
-                  const color =
-                    option.type === "employee"
-                      ? "#4caf50"
-                      : option.type === "vendor"
-                        ? "#ff9800"
-                        : "#2196f3";
+                {
+                  id: "entityName",
+                  label: "Entity Name",
+                  type: "select",
+                  options: entityOptions,
+                  renderOption: (props, option) => {
+                    const { key, ...otherProps } = props; // Extract key separately
+                    const color =
+                      option.type === "employee"
+                        ? "#4caf50"
+                        : option.type === "vendor"
+                          ? "#ff9800"
+                          : "#2196f3";
 
-                  return (
-                    <li {...props}>
-                      <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-                        {option.label}
-
+                    return (
+                      <li key={key} {...otherProps}>
                         <Box
                           sx={{
-                            ml: "auto",
-                            px: 1,
-                            py: 0.2,
-                            borderRadius: "12px",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            backgroundColor: color,
-                            color: "white",
-                            textTransform: "capitalize",
+                            display: "flex",
+                            alignItems: "center",
+                            width: "100%",
                           }}
                         >
-                          {option.type}
+                          {option.label}
+
+                          <Box
+                            sx={{
+                              ml: "auto",
+                              px: 1,
+                              py: 0.2,
+                              borderRadius: "12px",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              backgroundColor: color,
+                              color: "white",
+                              textTransform: "capitalize",
+                            }}
+                          >
+                            {option.type}
+                          </Box>
                         </Box>
-                      </Box>
-                    </li>
-                  );
+                      </li>
+                    );
+                  },
                 },
-              },
-              { id: "accountHead", label: "Account Head" },
-              {
-                id: "paymentMethod",
-                label: "Payment Method",
-                placeHolder: "Select payment method",
-                type: "select",
-                options: paymentOptions,
-              },
-              { id: "amount", label: "Amount" },
-              {
-                id: "description",
-                label: "Description",
-                type: "textarea",
-                rows: 2,
-                fullWidth: true,
-              },
-            ]
+                { id: "accountHead", label: "Account Head" },
+                {
+                  id: "paymentMethod",
+                  label: "Payment Method",
+                  placeHolder: "Select payment method",
+                  type: "select",
+                  options: paymentOptions,
+                },
+                { id: "amount", label: "Amount" },
+                {
+                  id: "description",
+                  label: "Description",
+                  type: "textarea",
+                  rows: 2,
+                  fullWidth: true,
+                },
+              ]
             : [
-              { id: "entityName", label: "Customer Name" },
-              { id: "accountHead", label: "Account Head" },
-              { id: "paymentMethod", label: "Payment Method" },
-              { id: "date", label: "Date" },
-              { id: "amount", label: "Amount" },
-            ]
+                { id: "entityName", label: "Customer Name" },
+                { id: "accountHead", label: "Account Head" },
+                { id: "paymentMethod", label: "Payment Method" },
+                { id: "date", label: "Date" },
+                { id: "amount", label: "Amount" },
+              ]
         }
         onPrint={() => window.print()}
         onShare={() => console.log("Share clicked")}

@@ -208,8 +208,9 @@ export default function IncomePage() {
         status: "Invoiced",
         amount: Number(formData.amount || 0),
         description: formData.description || "",
-        // Don't store file data locally to avoid localStorage quota exceeded
-        apiResponse: apiResponse, // Store API response
+        // Don't store file data locally - only store filename to avoid localStorage quota exceeded
+        fileName: formData.file?.name || null,
+        apiId: apiResponse?.id || null, // Store API response ID
       };
 
       setIncomeData((prev) => [newEntry, ...prev]);
@@ -224,22 +225,47 @@ export default function IncomePage() {
     }
   };
 
-  const handleEditIncome = (formData) => {
+  const handleEditIncome = async (formData) => {
     if (!selectedRow) return;
-    const updatedEntry = {
-      ...selectedRow,
-      ...formData,
-      amount: Number(formData.amount || 0),
-      description: formData.description || "",
-      file: formData.file || selectedRow.file || null,
-    };
-    // Update incomeData instead of context
-    setIncomeData((prev) =>
-      prev.map((item) => (item.id === selectedRow.id ? updatedEntry : item)),
-    );
-    setIsModalOpen(false);
-    setSelectedRow(null);
-    setModalMode("add");
+    try {
+      const updatedEntry = {
+        ...selectedRow,
+        ...formData,
+        amount: Number(formData.amount || 0),
+        description: formData.description || "",
+        // Don't store file data locally - only store filename
+        fileName: formData.file?.name || selectedRow.fileName || null,
+      };
+
+      // Update via API if file provided
+      if (formData.file) {
+        try {
+          const apiResponse = await addIncomeTransactionApi({
+            entity: selectedRow.entityType || "customer",
+            accountHead: formData.accountHead,
+            customerName: formData.entityName,
+            paymentMethod: formData.paymentMethod,
+            amount: formData.amount,
+            description: formData.description,
+            file: formData.file,
+          });
+          updatedEntry.apiId = apiResponse?.id || null;
+        } catch (error) {
+          console.error("Error updating via API:", error);
+        }
+      }
+
+      // Update incomeData instead of context
+      setIncomeData((prev) =>
+        prev.map((item) => (item.id === selectedRow.id ? updatedEntry : item)),
+      );
+      setIsModalOpen(false);
+      setSelectedRow(null);
+      setModalMode("add");
+    } catch (error) {
+      console.error("Error editing income transaction:", error);
+      setApiError(error.message || "Failed to edit income transaction.");
+    }
   };
 
   const handleCopyIncome = () => {
@@ -441,6 +467,7 @@ export default function IncomePage() {
                       type: "select",
                       options: entityOptions,
                       renderOption: (props, option) => {
+                        const { key, ...otherProps } = props; // Extract key separately
                         const color =
                           option.type === "employee"
                             ? "#4caf50"
@@ -449,7 +476,7 @@ export default function IncomePage() {
                               : "#2196f3";
 
                         return (
-                          <li {...props}>
+                          <li key={key} {...otherProps}>
                             <Box
                               sx={{
                                 display: "flex",

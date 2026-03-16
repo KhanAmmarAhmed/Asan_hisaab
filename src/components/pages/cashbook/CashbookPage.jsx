@@ -75,16 +75,7 @@ const getInitialAccounts = () => {
       return [];
     }
   }
-  return [
-    {
-      id: 1,
-      name: "Alfalah Bank",
-      type: "bank",
-      balance: "Rs. 15,000/-",
-      bankType: "alfalah",
-      accountNumber: "1234567890",
-    },
-  ];
+  return [];
 };
 
 const accountModalFields = [
