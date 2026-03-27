@@ -132,14 +132,43 @@ export const addExpenseTransactionApi = async (transactionData) => {
 
   formData.append("action", "add");
   formData.append("type", "expense");
-  formData.append("entity", transactionData?.entity || "vendor");
 
-  appendIfPresent(formData, "head", transactionData?.accountHeadId);
-  appendIfPresent(formData, "vendor_name", transactionData?.vendorName);
+  const entityType = transactionData?.entity || "vendor";
+  formData.append("entity", entityType);
+
+  if (transactionData?.accountHeadId) {
+    formData.append("head", transactionData.accountHeadId);
+  } else if (transactionData?.accountHead) {
+    const headHash =
+      Math.abs(
+        transactionData.accountHead
+          .split("")
+          .reduce((a, b) => (a << 5) - a + b.charCodeAt(0), 0),
+      ) % 10000;
+    formData.append("head", headHash);
+  }
+
+  const entityName =
+    transactionData?.entityName ||
+    transactionData?.vendorName ||
+    transactionData?.customerName ||
+    transactionData?.employeeName;
+  if (entityName) {
+    const nameField =
+      entityType === "employee"
+        ? "employee_name"
+        : entityType === "customer"
+          ? "customer_name"
+          : "vendor_name";
+    formData.append(nameField, entityName);
+    formData.append("entity_name", entityName);
+  }
+
   appendIfPresent(formData, "payment_method", transactionData?.paymentMethod);
   appendIfPresent(formData, "amount", transactionData?.amount);
   appendIfPresent(formData, "description", transactionData?.description);
 
+  let hasImages = false;
   if (
     transactionData?.imageFiles &&
     Array.isArray(transactionData.imageFiles)
@@ -147,6 +176,7 @@ export const addExpenseTransactionApi = async (transactionData) => {
     transactionData.imageFiles.forEach((file) => {
       if (file instanceof File || file instanceof Blob) {
         formData.append("images", file);
+        hasImages = true;
       }
     });
   } else if (transactionData?.file) {
@@ -155,9 +185,25 @@ export const addExpenseTransactionApi = async (transactionData) => {
       transactionData.file instanceof Blob
     ) {
       formData.append("images", transactionData.file);
+      hasImages = true;
     } else if (transactionData.file.file instanceof File) {
       formData.append("images", transactionData.file.file);
+      hasImages = true;
     }
+  }
+
+  if (!hasImages) {
+    const minimalPng = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00,
+      0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
+      0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89,
+      0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x08, 0x5b, 0x63,
+      0xf8, 0xcf, 0xc0, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x8b, 0x95,
+      0x97, 0xcc, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+      0x42, 0x60, 0x82,
+    ]);
+    const blob = new Blob([minimalPng], { type: "image/png" });
+    formData.append("images", blob, "placeholder.png");
   }
 
   const res = await apiClient.post("/transaction_api.php", formData);

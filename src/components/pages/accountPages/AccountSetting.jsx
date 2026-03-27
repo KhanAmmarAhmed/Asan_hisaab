@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Card,
@@ -23,29 +23,35 @@ import {
   Save as SaveIcon,
   Cancel as CancelIcon,
 } from "@mui/icons-material";
+import { useAuth } from "@/context/AuthContext";
 
 const AccountSetting = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const { currentAccount, updateAccountProfile } = useAuth();
+
+  const buildProfileData = (account) => ({
+    fullName: account?.name || "",
+    email: account?.email || "",
+    phone: account?.phone || "",
+  });
 
   // Profile State
-  const [profileData, setProfileData] = useState({
-    fullName: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+92 300 1234567",
-  });
+  const [profileData, setProfileData] = useState(() =>
+    buildProfileData(currentAccount),
+  );
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileFormData, setProfileFormData] = useState(profileData);
+  const [profileFormData, setProfileFormData] = useState(() =>
+    buildProfileData(currentAccount),
+  );
   const [profileSuccess, setProfileSuccess] = useState(false);
 
   // Company State
   const [companyData, setCompanyData] = useState({
     companyName: "ABC Trading Company",
     registrationNumber: "REG-001234",
-    industry: "Trading",
     address: "123 Main Street, Karachi",
     city: "Karachi",
-    country: "Pakistan",
   });
   const [isEditingCompany, setIsEditingCompany] = useState(false);
   const [companyFormData, setCompanyFormData] = useState(companyData);
@@ -79,9 +85,22 @@ const AccountSetting = () => {
   };
 
   const handleSaveProfile = () => {
-    setProfileData(profileFormData);
+    const trimmed = {
+      fullName: profileFormData.fullName.trim(),
+      email: profileFormData.email.trim(),
+      phone: profileFormData.phone.trim(),
+    };
+    setProfileData(trimmed);
+    setProfileFormData(trimmed);
     setIsEditingProfile(false);
     setProfileSuccess(true);
+    if (currentAccount?.id) {
+      updateAccountProfile(currentAccount.id, {
+        name: trimmed.fullName,
+        email: trimmed.email,
+        phone: trimmed.phone,
+      });
+    }
     setTimeout(() => setProfileSuccess(false), 3000);
   };
 
@@ -142,6 +161,13 @@ const AccountSetting = () => {
       [name]: type === "checkbox" ? checked : value,
     });
   };
+
+  useEffect(() => {
+    const nextProfile = buildProfileData(currentAccount);
+    setProfileData(nextProfile);
+    setProfileFormData(nextProfile);
+    setIsEditingProfile(false);
+  }, [currentAccount]);
 
   return (
     <Box
@@ -358,12 +384,13 @@ const AccountSetting = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Industry"
-                  name="industry"
-                  value={companyFormData.industry}
+                  label="Address"
+                  name="address"
+                  value={companyFormData.address}
                   onChange={handleCompanyChange}
                   disabled={!isEditingCompany}
                   variant={isEditingCompany ? "outlined" : "standard"}
+                  multiline
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -375,30 +402,6 @@ const AccountSetting = () => {
                   onChange={handleCompanyChange}
                   disabled={!isEditingCompany}
                   variant={isEditingCompany ? "outlined" : "standard"}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Country"
-                  name="country"
-                  value={companyFormData.country}
-                  onChange={handleCompanyChange}
-                  disabled={!isEditingCompany}
-                  variant={isEditingCompany ? "outlined" : "standard"}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Address"
-                  name="address"
-                  value={companyFormData.address}
-                  onChange={handleCompanyChange}
-                  disabled={!isEditingCompany}
-                  variant={isEditingCompany ? "outlined" : "standard"}
-                  multiline
-                  rows={2}
                 />
               </Grid>
             </Grid>

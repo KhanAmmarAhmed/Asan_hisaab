@@ -9,6 +9,7 @@ import MenuItem from "@mui/material/MenuItem";
 import AddIcon from "@mui/icons-material/Add";
 import SettingsIcon from "@mui/icons-material/Settings";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import Divider from "@mui/material/Divider";
 import { useNavigate } from "react-router-dom";
 import { useContext } from "react";
 import { CompanyContext } from "@/context/CompanyContext";
@@ -139,6 +140,13 @@ export default function Navbar() {
               onClick={() => handleCreate("/employees")}
             >
               Employees
+            </MenuItem>
+            <Divider />
+            <MenuItem
+              sx={{ fontWeight: 600 }}
+              onClick={() => handleCreate("/departments")}
+            >
+              Department
             </MenuItem>
           </Menu>
 

@@ -53,6 +53,7 @@ export const addEmployeeApi = async (employeeData) => {
   const payload = res?.data ?? {};
 
   assertApiSuccess(payload, "Failed to create employee");
+  // console.log("in employeeAPI", formData);
   return payload?.data ?? payload;
 };
 

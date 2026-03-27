@@ -26,6 +26,7 @@ import AccountSetting from "@/components/pages/accountPages/AccountSetting";
 import SwitchAccount from "@/components/pages/accountPages/SwitchAccount";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
+import DepartmentsPage from "../components/pages/create/DepartmentsPage";
 
 export default function AppRoutes() {
   return (
@@ -81,6 +82,7 @@ export default function AppRoutes() {
         <Route path="customers" element={<CustomersPage />} />
         <Route path="vendors" element={<VendorsPage />} />
         <Route path="employees" element={<EmployeesPage />} />
+        <Route path="departments" element={<DepartmentsPage />} />
         <Route path="profit" element={<ProfitPage />} />
         <Route path="cash-in-out" element={<CashInOutPage />} />
         <Route path="ledger" element={<LedgerPage />} />

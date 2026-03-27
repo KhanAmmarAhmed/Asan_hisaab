@@ -46,7 +46,7 @@ const LoginPage = () => {
       const res = await loginUser({ ...form, email });
       const status = String(res?.status || "").toLowerCase();
       if (status === "success") {
-        login(res);
+        login({ ...res, email });
         navigate("/dashboard");
       } else {
         setError(res.message || "Login failed");

@@ -12,5 +12,11 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
+    proxy: {
+      "/assanhisaab": {
+        target: "https://fisdemoprojects.com",
+        changeOrigin: true,
+      },
+    },
   },
 });

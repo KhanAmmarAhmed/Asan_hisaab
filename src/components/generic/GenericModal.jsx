@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Autocomplete from "@mui/material/Autocomplete";
-// import EntitySelectWithBadges from "../../theme/EntitySelectWithBadges";
+import { useAuth } from "@/context/AuthContext";
 import {
   Dialog,
   DialogTitle,
@@ -85,8 +85,7 @@ export default function GenericModal({
     quantity: 1,
     price: 0,
   });
-  // const [customerName, setCustomerName] = useState("");
-  // const [employeeName, setEmployeeName] = useState("");
+  const { currentAccount, accounts } = useAuth();
   const inputRef = useRef(null);
 
   const handleAddItem = () => {
@@ -292,7 +291,6 @@ export default function GenericModal({
   const handleBack = () => {
     if (onBack) onBack();
   };
-  
 
   return (
     <Dialog
@@ -1633,20 +1631,22 @@ export default function GenericModal({
                   </Typography>
                 </Box>
               </Box>
-              <Box>
-                <Typography mb={1} fontWeight={900}>
-                  Attention:
-                </Typography>
-                <Typography fontWeight={600} color="#555">
-                  Mohammad Adnan Tariq
-                </Typography>
-                <Typography fontWeight={600} color="#555">
-                  Chacklala scheme 3, Rawalpindi
-                </Typography>
-                <Typography fontWeight={600} color="#555">
-                  0304-7329166
-                </Typography>
-              </Box>
+              {currentAccount && (
+                <Box>
+                  <Typography mb={1} fontWeight={900}>
+                    Attention:
+                  </Typography>
+                  <Typography fontWeight={600} color="#555">
+                    {currentAccount.name}
+                  </Typography>
+                  <Typography fontWeight={600} color="#555">
+                    {currentAccount.address}
+                  </Typography>
+                  <Typography fontWeight={600} color="#555">
+                    {currentAccount.phone}
+                  </Typography>
+                </Box>
+              )}
               <Paper
                 elevation={0}
                 sx={{

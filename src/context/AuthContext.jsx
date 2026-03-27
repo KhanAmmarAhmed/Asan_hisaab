@@ -19,6 +19,41 @@ const AuthContext = createContext();
 const ACCOUNTS_KEY = "accounts";
 const ACTIVE_ACCOUNT_KEY = "activeAccountId";
 
+const pickFirstValue = (...values) =>
+  values.find(
+    (value) =>
+      value !== undefined &&
+      value !== null &&
+      String(value).trim() !== "",
+  );
+
+const normalizeProfile = (accountData) => {
+  const nested =
+    accountData?.user || accountData?.profile || accountData?.data || {};
+
+  const name = pickFirstValue(
+    accountData?.name,
+    accountData?.fullName,
+    nested?.name,
+    nested?.fullName,
+  );
+  const email = pickFirstValue(accountData?.email, nested?.email);
+  const phone = pickFirstValue(
+    accountData?.phone,
+    accountData?.number,
+    nested?.phone,
+    nested?.number,
+  );
+  const address = pickFirstValue(accountData?.address, nested?.address);
+
+  return {
+    name: name || "",
+    email: email || "",
+    phone: phone || "",
+    address: address || "",
+  };
+};
+
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(!!getToken());
   const [accounts, setAccounts] = useState(() => {
@@ -51,34 +86,86 @@ export const AuthProvider = ({ children }) => {
   }, [currentAccount]);
 
   const saveAccount = useCallback((accountData) => {
-    // Create account object with unique ID
+    const profile = normalizeProfile(accountData);
     const newAccount = {
       id: Date.now().toString(),
-      label: accountData.email || accountData.label || "Unknown",
-      email: accountData.email,
-      client_id: accountData.client_id,
-      secret_key: accountData.secret_key,
-      token: accountData.token,
-      refresh_token: accountData.refresh_token,
-      name: accountData.name || "",
+      label: profile.email || accountData?.label || "Unknown",
+      email: profile.email,
+      phone: profile.phone,
+      address: profile.address,
+      client_id: accountData?.client_id,
+      secret_key: accountData?.secret_key,
+      token: accountData?.token,
+      refresh_token: accountData?.refresh_token,
+      name: profile.name,
     };
 
+    let savedAccount = newAccount;
+
     setAccounts((prev) => {
-      // Check if account with same client_id already exists
-      const existingIndex = prev.findIndex(
-        (acc) => acc.client_id === newAccount.client_id,
+      const existingIndex = prev.findIndex((acc) =>
+        newAccount.client_id
+          ? acc.client_id === newAccount.client_id
+          : newAccount.email
+            ? acc.email === newAccount.email
+            : false,
       );
       if (existingIndex >= 0) {
-        // Update existing account
+        const existing = prev[existingIndex];
+        const merged = {
+          ...existing,
+          ...newAccount,
+          name: newAccount.name || existing.name || "",
+          email: newAccount.email || existing.email || "",
+          phone: newAccount.phone || existing.phone || "",
+          address: newAccount.address || existing.address || "",
+          label:
+            newAccount.email || newAccount.label || existing.label || "Unknown",
+        };
+        savedAccount = merged;
         const updated = [...prev];
-        updated[existingIndex] = { ...updated[existingIndex], ...newAccount };
+        updated[existingIndex] = merged;
         return updated;
       }
       return [...prev, newAccount];
     });
 
-    setCurrentAccount(newAccount);
-    return newAccount;
+    setCurrentAccount(savedAccount);
+    return savedAccount;
+  }, []);
+
+  const updateAccountProfile = useCallback((accountId, profileUpdates) => {
+    if (!accountId) return;
+
+    const normalized = normalizeProfile(profileUpdates);
+
+    setAccounts((prev) =>
+      prev.map((acc) => {
+        if (acc.id !== accountId) return acc;
+        const email = normalized.email || acc.email || "";
+        return {
+          ...acc,
+          name: normalized.name || acc.name || "",
+          email,
+          phone: normalized.phone || acc.phone || "",
+          address: normalized.address || acc.address || "",
+          label: email || acc.label || "Unknown",
+        };
+      }),
+    );
+
+    setCurrentAccount((prev) => {
+      if (!prev || prev.id !== accountId) return prev;
+      const email = normalized.email || prev.email || "";
+      return {
+        ...prev,
+        name: normalized.name || prev.name || "",
+        email,
+        phone: normalized.phone || prev.phone || "",
+        address: normalized.address || prev.address || "",
+        label: email || prev.label || "Unknown",
+      };
+    });
   }, []);
 
   const switchAccount = useCallback(
@@ -144,6 +231,7 @@ export const AuthProvider = ({ children }) => {
         switchAccount,
         saveAccount,
         removeAccount,
+        updateAccountProfile,
       }}
     >
       {children}

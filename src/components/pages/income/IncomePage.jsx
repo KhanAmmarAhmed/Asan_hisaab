@@ -62,25 +62,18 @@ export default function IncomePage() {
     // First check if the API response includes a name field
     if (
       item.customer_name ||
+      item.entity ||
       item.entity_name ||
       item.vendor_name ||
       item.employee_name
     ) {
       return (
         item.customer_name ||
-        item.entity_name ||
+        item.entity ||
         item.vendor_name ||
         item.employee_name
       );
     }
-
-    // If no name in API response, the entity name might be stored but not shown,
-    // Log a warning for debugging
-    // console.warn(
-    //   `API response missing entity name for item:`,
-    //   item,
-    //   `- Please check if API should return customer_name/vendor_name`,
-    // );
 
     return "[Entity Name Not Provided]";
   };
@@ -241,7 +234,7 @@ export default function IncomePage() {
       if (formData.file) {
         try {
           const apiResponse = await addIncomeTransactionApi({
-            entity: selectedRow.entityType || "customer",
+            entity: selectedRow.entityType || "customer" || "employee",
             accountHead: formData.accountHead,
             customerName: formData.entityName,
             paymentMethod: formData.paymentMethod,
@@ -370,15 +363,6 @@ export default function IncomePage() {
                 borderRadius: isMobile ? 1 : 0,
               }}
             >
-              {/* <GenericSelectField
-            label="Customer Name"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            options={customers.map((c) => ({
-              label: c.customerName,
-              value: c.customerName,
-            }))}
-          /> */}
               <GenericSelectField
                 label="Entity Name"
                 value={entityName}

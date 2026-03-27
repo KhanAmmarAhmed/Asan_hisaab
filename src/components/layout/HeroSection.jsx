@@ -369,18 +369,18 @@ export default function HeroSection() {
           }}
           onClick={(e) => setCreateAnchor(e.currentTarget)}
         >
-          {currentAccount?.label
-            ? currentAccount.label.charAt(0).toUpperCase()
+          {currentAccount?.name
+            ? currentAccount.name.charAt(0).toUpperCase()
             : currentAccount?.email
               ? currentAccount.email.charAt(0).toUpperCase()
-              : "U"}
+              : null}
         </Avatar>
         {currentAccount && (
           <Typography
             variant="caption"
             sx={{
               color: "#1B0D3F",
-              fontWeight: 500,
+              fontWeight: 600,
               maxWidth: 100,
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -388,7 +388,7 @@ export default function HeroSection() {
               textAlign: "center",
             }}
           >
-            {currentAccount.label || currentAccount.email}
+            {currentAccount.name || currentAccount.email}
           </Typography>
         )}
       </Box>
@@ -405,7 +405,7 @@ export default function HeroSection() {
                 variant="subtitle2"
                 sx={{ fontWeight: 600, color: "#1B0D3F" }}
               >
-                {currentAccount.label || currentAccount.email}
+                {currentAccount.name}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 {currentAccount.email}

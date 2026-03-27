@@ -53,7 +53,8 @@ const performLogout = () => {
     return;
   }
   clearAuthData();
-  window.location.href = getLogoutRedirect();
+  // Instead of a hard redirect, dispatch an event so the app can show a modal
+  window.dispatchEvent(new Event("session-expired"));
 };
 
 const isAbsoluteUrl = (url) => /^([a-z][a-z\d+\-.]*:)?\/\//i.test(url || "");

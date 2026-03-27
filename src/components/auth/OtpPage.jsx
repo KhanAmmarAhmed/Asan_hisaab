@@ -59,9 +59,11 @@ const OtpPage = () => {
     try {
       const res = await sendOtp(userData.email);
       if (res.status === "success" || res.message) {
+        console.log("sending OTP!!!!");
         setOtpSent(true);
       } else {
-        setError("Failed to send OTP. Please try again.");
+        // setError("Failed to send OTP. Please try again.");
+        null;
       }
     } catch (err) {
       console.error("Error sending OTP:", err);
@@ -98,7 +100,19 @@ const OtpPage = () => {
       });
 
       if (res.status === "success") {
-        login(res);
+        const enrichedAccount = {
+          ...res,
+          name: res?.name || userData?.name || res?.user?.name,
+          email: res?.email || userData?.email || res?.user?.email,
+          number:
+            res?.number ||
+            res?.phone ||
+            userData?.number ||
+            res?.user?.number ||
+            res?.user?.phone,
+          address: res?.address || userData?.address || res?.user?.address,
+        };
+        login(enrichedAccount);
         navigate("/dashboard");
       } else {
         setError(res.message || "Verification failed. Please try again.");

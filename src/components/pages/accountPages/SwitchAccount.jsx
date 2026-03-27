@@ -166,7 +166,7 @@ const SwitchAccount = () => {
                         }}
                       >
                         {account.label
-                          ? account.label.charAt(0).toUpperCase()
+                          ? account.name.charAt(0).toUpperCase()
                           : "U"}
                       </Avatar>
                     </ListItemIcon>
@@ -176,7 +176,7 @@ const SwitchAccount = () => {
                           variant="subtitle1"
                           sx={{ fontWeight: 600, color: "#1B0D3F" }}
                         >
-                          {account.label || account.email || "Unknown Account"}
+                          {account.name || "Unknown Account"}
                         </Typography>
                       }
                       secondary={

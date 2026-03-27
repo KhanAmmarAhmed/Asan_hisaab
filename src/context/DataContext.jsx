@@ -475,18 +475,23 @@ import React, { createContext, useState, useEffect, useMemo } from "react";
 import { fetchCustomersApi } from "../services/customerApi";
 import { fetchEmployeesApi } from "../services/employeeApi";
 import { fetchVendorsApi } from "../services/vendorApi";
+import { 
+  fetchProjectsApi, 
+  addProjectApi, 
+  updateProjectApi 
+} from "../services/projectApi";
+import { 
+  fetchInvoicesApi, 
+  addInvoiceApi, 
+  updateInvoiceApi 
+} from "../services/invoiceApi";
+import { 
+  fetchTransactionsApi,
+  addIncomeTransactionApi,
+  addExpenseTransactionApi 
+} from "../services/transactionApi";
 
 export const DataContext = createContext();
-
-const generateId = () =>
-  `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-const ensureId = (record) => ({
-  ...record,
-  id: record.id || generateId(),
-});
-
-const ensureIdsInArray = (records) => records.map(ensureId);
 
 export const parseAmount = (val) => {
   if (typeof val === "number") return val;
@@ -495,15 +500,99 @@ export const parseAmount = (val) => {
   return parseFloat(cleaned) || 0;
 };
 
-// Safe JSON parser that returns null on failure
-const safeParse = (item) => {
-  if (!item) return null;
-  try {
-    return JSON.parse(item);
-  } catch {
-    return null;
-  }
+const toDate = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return isNaN(value) ? null : value;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const normalized = raw.includes(" ") && !raw.includes("T")
+    ? raw.replace(" ", "T")
+    : raw;
+  const parsed = new Date(normalized);
+  return isNaN(parsed) ? null : parsed;
 };
+
+const toIsoDate = (value) => {
+  const date = toDate(value);
+  return date ? date.toISOString().split("T")[0] : "";
+};
+
+const resolveTransactionDate = (item) =>
+  toIsoDate(
+    item?.date ??
+      item?.transaction_date ??
+      item?.transactionDate ??
+      item?.created_at ??
+      item?.createdAt,
+  );
+
+const resolveTransactionAmount = (item) =>
+  parseAmount(
+    item?.amount ??
+      item?.total ??
+      item?.total_amount ??
+      item?.totalAmount ??
+      item?.value,
+  );
+
+const resolveTransactionEntityName = (item) =>
+  item?.entityName ??
+  item?.entity_name ??
+  item?.customer_name ??
+  item?.vendor_name ??
+  item?.employee_name ??
+  item?.customerName ??
+  item?.vendorName ??
+  item?.employeeName ??
+  item?.entity ??
+  "";
+
+const normalizeTransaction = (item, fallbackEntityType) => {
+  const normalizedDate = resolveTransactionDate(item);
+  return {
+    ...item,
+    id:
+      item?.id ??
+      item?.transaction_id ??
+      item?.transactionId ??
+      item?.transactionID ??
+      undefined,
+    voucher:
+      item?.voucher ??
+      item?.voucher_no ??
+      item?.voucherNo ??
+      item?.voucherNumber ??
+      item?.voucher_num,
+    entityName: resolveTransactionEntityName(item),
+    accountHead: item?.account_head ?? item?.accountHead ?? item?.head ?? "",
+    paymentMethod:
+      item?.payment_method ?? item?.paymentMethod ?? item?.method ?? "",
+    status: item?.status ?? "Invoiced",
+    amount: resolveTransactionAmount(item),
+    date: normalizedDate,
+    createdAt:
+      item?.createdAt ??
+      item?.created_at ??
+      normalizedDate ??
+      item?.date ??
+      "",
+    entityType: item?.entity ?? item?.entityType ?? fallbackEntityType,
+  };
+};
+
+const normalizeTransactions = (items, fallbackEntityType) =>
+  (Array.isArray(items) ? items : []).map((item) =>
+    normalizeTransaction(item, fallbackEntityType),
+  );
+
+const getTransactionDateObject = (item) =>
+  toDate(
+    item?.date ??
+      item?.transaction_date ??
+      item?.transactionDate ??
+      item?.created_at ??
+      item?.createdAt,
+  );
 
 // Default data for each entity
 const DEFAULT_PROJECTS = [
@@ -516,47 +605,23 @@ export const DataProvider = ({ children }) => {
   // Customers are now API‑backed – start with empty array
   const [customers, setCustomers] = useState([]);
 
-  // Vendors – safely read from localStorage
+  // Vendors are API-backed
   const [vendors, setVendors] = useState([]);
 
-  // Projects
-  const [projects, setProjects] = useState(() => {
-    const saved = localStorage.getItem("projects");
-    const parsed = safeParse(saved);
-    return ensureIdsInArray(Array.isArray(parsed) ? parsed : DEFAULT_PROJECTS);
-  });
+  // Projects are API-backed
+  const [projects, setProjects] = useState([]);
 
-  // Employees are API-backed â€“ start with empty array
+  // Employees are API-backed 
   const [employees, setEmployees] = useState([]);
 
-  // Invoices
-  const [invoices, setInvoices] = useState(() => {
-    const saved = localStorage.getItem("invoices");
-    const parsed = safeParse(saved);
-    return ensureIdsInArray(Array.isArray(parsed) ? parsed : []);
-  });
+  // Invoices are API-backed
+  const [invoices, setInvoices] = useState([]);
 
-  // Income
-  const [income, setIncome] = useState(() => {
-    const saved = localStorage.getItem("income");
-    const parsed = safeParse(saved);
-    return ensureIdsInArray(Array.isArray(parsed) ? parsed : []);
-  });
+  // Income is API-backed
+  const [income, setIncome] = useState([]);
 
-  // Expenses
-  const [expenses, setExpenses] = useState(() => {
-    const saved = localStorage.getItem("expenses");
-    const parsed = safeParse(saved);
-    return ensureIdsInArray(Array.isArray(parsed) ? parsed : []);
-  });
-
-  // Persist only non‑customer data to localStorage
-  useEffect(() => {
-    localStorage.setItem("projects", JSON.stringify(projects));
-    localStorage.setItem("invoices", JSON.stringify(invoices));
-    localStorage.setItem("income", JSON.stringify(income));
-    localStorage.setItem("expenses", JSON.stringify(expenses));
-  }, [projects, invoices, income, expenses]);
+  // Expenses are API-backed
+  const [expenses, setExpenses] = useState([]);
 
   // Fetch customers from API on mount
   useEffect(() => {
@@ -578,7 +643,7 @@ export const DataProvider = ({ children }) => {
         const list = await fetchCustomersApi();
 
         if (!isMounted) return;
-        setCustomers(ensureIdsInArray(list.map(mapCustomer)));
+        setCustomers(Array.isArray(list) ? list.map(mapCustomer) : []);
       } catch (err) {
         console.warn("Failed to fetch customers:", err);
       }
@@ -610,7 +675,7 @@ export const DataProvider = ({ children }) => {
       try {
         const list = await fetchEmployeesApi();
         if (!isMounted) return;
-        setEmployees(ensureIdsInArray(list.map(mapEmployee)));
+        setEmployees(Array.isArray(list) ? list.map(mapEmployee) : []);
       } catch (err) {
         console.warn("Failed to fetch employees:", err);
       }
@@ -640,7 +705,7 @@ export const DataProvider = ({ children }) => {
       try {
         const list = await fetchVendorsApi();
         if (!isMounted) return;
-        setVendors(ensureIdsInArray(list.map(mapVendor)));
+        setVendors(Array.isArray(list) ? list.map(mapVendor) : []);
       } catch (err) {
         console.warn("Failed to fetch vendors:", err);
       }
@@ -651,42 +716,153 @@ export const DataProvider = ({ children }) => {
     };
   }, []);
 
+  // Fetch projects from API on mount
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const list = await fetchProjectsApi();
+        if (!isMounted) return;
+        setProjects(Array.isArray(list) && list.length > 0 ? list : DEFAULT_PROJECTS);
+      } catch (err) {
+        console.warn("Failed to fetch projects:", err);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Fetch invoices from API on mount
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const list = await fetchInvoicesApi();
+        if (!isMounted) return;
+        setInvoices(Array.isArray(list) ? list : []);
+      } catch (err) {
+        console.warn("Failed to fetch invoices:", err);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Fetch income transactions from API on mount
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const list = await fetchTransactionsApi("income");
+        if (!isMounted) return;
+        setIncome(normalizeTransactions(list, "customer"));
+      } catch (err) {
+        console.warn("Failed to fetch income:", err);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Fetch expense transactions from API on mount
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const list = await fetchTransactionsApi("expense");
+        if (!isMounted) return;
+        setExpenses(normalizeTransactions(list, "vendor"));
+      } catch (err) {
+        console.warn("Failed to fetch expenses:", err);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
+
   // --- Helper Actions ---
-  const addCustomer = (customer) =>
-    setCustomers((prev) => [ensureId(customer), ...prev]);
+  const addCustomer = (customer) => setCustomers((prev) => [customer, ...prev]);
 
-  const addVendor = (vendor) =>
-    setVendors((prev) => [ensureId(vendor), ...prev]);
+  const addVendor = (vendor) => setVendors((prev) => [vendor, ...prev]);
 
-  const addProject = (project) =>
-    setProjects((prev) => [...prev, ensureId(project)]);
-
-  const updateProject = (index, updatedProject) => {
-    setProjects((prev) =>
-      prev.map((p, i) => (i === index ? updatedProject : p)),
-    );
+  const addProject = async (project) => {
+    try {
+      const savedProject = await addProjectApi(project);
+      setProjects((prev) => [...prev, savedProject]);
+    } catch (err) {
+      console.error("Failed to add project:", err);
+    }
   };
 
-  const addEmployee = (employee) =>
-    setEmployees((prev) => [ensureId(employee), ...prev]);
+  const updateProject = async (index, updatedProject) => {
+    try {
+      const pid = projects[index]?.id;
+      if (!pid) return;
+      const savedProject = await updateProjectApi({ ...updatedProject, id: pid });
+      setProjects((prev) => prev.map((p, i) => (i === index ? savedProject : p)));
+    } catch (err) {
+      console.error("Failed to update project:", err);
+    }
+  };
 
-  const addInvoice = (invoice) =>
-    setInvoices((prev) => [ensureId(invoice), ...prev]);
+  const addEmployee = (employee) => setEmployees((prev) => [employee, ...prev]);
 
-  const updateInvoice = (index, updated) =>
-    setInvoices((prev) => prev.map((inv, i) => (i === index ? updated : inv)));
+  const addInvoice = async (invoice) => {
+    try {
+      const savedInvoice = await addInvoiceApi(invoice);
+      setInvoices((prev) => [savedInvoice, ...prev]);
+    } catch (err) {
+      console.error("Failed to add invoice:", err);
+    }
+  };
 
-  const addIncome = (entry) => setIncome((prev) => [ensureId(entry), ...prev]);
+  const updateInvoice = async (index, updated) => {
+    try {
+      const iid = invoices[index]?.id;
+      if (!iid) return;
+      const savedInvoice = await updateInvoiceApi({ ...updated, id: iid });
+      setInvoices((prev) => prev.map((inv, i) => (i === index ? savedInvoice : inv)));
+    } catch (err) {
+      console.error("Failed to update invoice:", err);
+    }
+  };
+
+  const addIncome = async (entry) => {
+    try {
+      const savedEntry = await addIncomeTransactionApi(entry);
+      setIncome((prev) => [
+        normalizeTransaction(savedEntry, "customer"),
+        ...prev,
+      ]);
+    } catch (err) {
+       console.error("Failed to add income:", err);
+    }
+  };
 
   const updateIncome = (id, updated) =>
-    setIncome((prev) => prev.map((inc, i) => (inc.id === id ? updated : inc)));
+    setIncome((prev) =>
+      prev.map((inc) =>
+        inc.id === id
+          ? normalizeTransaction({ ...inc, ...updated }, inc.entityType)
+          : inc,
+      ),
+    );
 
-  const addExpense = (entry) =>
-    setExpenses((prev) => [ensureId(entry), ...prev]);
+  const addExpense = async (entry) => {
+    try {
+      const savedEntry = await addExpenseTransactionApi(entry);
+      setExpenses((prev) => [
+        normalizeTransaction(savedEntry, "vendor"),
+        ...prev,
+      ]);
+    } catch (err) {
+       console.error("Failed to add expense:", err);
+    }
+  };
 
   const updateExpense = (id, updated) =>
     setExpenses((prev) =>
-      prev.map((exp, i) => (exp.id === id ? updated : exp)),
+      prev.map((exp) =>
+        exp.id === id
+          ? normalizeTransaction({ ...exp, ...updated }, exp.entityType)
+          : exp,
+      ),
     );
 
   // ... (rest of your computed values remain unchanged) ...
@@ -766,16 +942,16 @@ export const DataProvider = ({ children }) => {
     const expenseMap = {};
 
     income.forEach((item) => {
-      const date = new Date(item.date || item.createdAt);
-      if (!isNaN(date)) {
+      const date = getTransactionDateObject(item);
+      if (date) {
         const key = `${date.getFullYear()}-${date.getMonth()}`;
         incomeMap[key] = (incomeMap[key] || 0) + parseAmount(item.amount);
       }
     });
 
     expenses.forEach((item) => {
-      const date = new Date(item.date || item.createdAt);
-      if (!isNaN(date)) {
+      const date = getTransactionDateObject(item);
+      if (date) {
         const key = `${date.getFullYear()}-${date.getMonth()}`;
         expenseMap[key] = (expenseMap[key] || 0) + parseAmount(item.amount);
       }
@@ -807,8 +983,8 @@ export const DataProvider = ({ children }) => {
     const expenseMap = {};
 
     income.forEach((item) => {
-      const date = new Date(item.date || item.createdAt);
-      if (!isNaN(date)) {
+      const date = getTransactionDateObject(item);
+      if (date) {
         const weekStart = getWeekStart(date);
         const key = weekStart.toISOString().split("T")[0];
         incomeMap[key] = (incomeMap[key] || 0) + parseAmount(item.amount);
@@ -816,8 +992,8 @@ export const DataProvider = ({ children }) => {
     });
 
     expenses.forEach((item) => {
-      const date = new Date(item.date || item.createdAt);
-      if (!isNaN(date)) {
+      const date = getTransactionDateObject(item);
+      if (date) {
         const weekStart = getWeekStart(date);
         const key = weekStart.toISOString().split("T")[0];
         expenseMap[key] = (expenseMap[key] || 0) + parseAmount(item.amount);
@@ -855,10 +1031,11 @@ export const DataProvider = ({ children }) => {
       color: "red",
     }));
     return [...incomeEntries, ...expenseEntries]
-      .sort(
-        (a, b) =>
-          new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt),
-      )
+      .sort((a, b) => {
+        const bDate = getTransactionDateObject(b);
+        const aDate = getTransactionDateObject(a);
+        return (bDate?.getTime() ?? 0) - (aDate?.getTime() ?? 0);
+      })
       .slice(0, 10);
   }, [income, expenses]);
 
@@ -871,8 +1048,8 @@ export const DataProvider = ({ children }) => {
 
     const filterItemsByRange = (items, from, to) =>
       items.filter((i) => {
-        const d = new Date(i.date || i.createdAt);
-        return !isNaN(d) && d >= from && d <= to;
+        const d = getTransactionDateObject(i);
+        return d && d >= from && d <= to;
       });
 
     const isSameDay = (d1, d2) =>
@@ -884,8 +1061,8 @@ export const DataProvider = ({ children }) => {
     yesterday.setDate(today.getDate() - 1);
 
     const yesterdayExpenses = expenses.filter((i) => {
-      const d = new Date(i.date || i.createdAt);
-      return !isNaN(d) && isSameDay(d, yesterday);
+      const d = getTransactionDateObject(i);
+      return d && isSameDay(d, yesterday);
     });
 
     const startOfWeek = new Date(today);
