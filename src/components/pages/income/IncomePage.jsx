@@ -54,6 +54,14 @@ export default function IncomePage() {
   const [apiError, setApiError] = useState("");
   const [fetchLoading, setFetchLoading] = useState(true);
 
+  const handlePrint = () => {
+    document.body.classList.add("print-detail-modal");
+    const cleanup = () =>
+      document.body.classList.remove("print-detail-modal");
+    window.addEventListener("afterprint", cleanup, { once: true });
+    window.print();
+  };
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -514,7 +522,7 @@ export default function IncomePage() {
                     { id: "amount", label: "Amount" },
                   ]
             }
-            onPrint={() => window.print()}
+            onPrint={handlePrint}
             onShare={() => console.log("Share clicked")}
             onSave={() => console.log("Save clicked")}
             onEdit={handleOnEdit}

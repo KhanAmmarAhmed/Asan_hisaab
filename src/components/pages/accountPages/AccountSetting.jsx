@@ -68,15 +68,15 @@ const AccountSetting = () => {
   const [passwordError, setPasswordError] = useState("");
 
   // Preferences State
-  const [preferences, setPreferences] = useState({
-    emailNotifications: true,
-    smsNotifications: false,
-    monthlyReports: true,
-    expenseReminders: true,
-    currency: "PKR",
-    dateFormat: "DD/MM/YYYY",
-    language: "English",
-  });
+  // const [preferences, setPreferences] = useState({
+  //   emailNotifications: true,
+  //   smsNotifications: false,
+  //   monthlyReports: true,
+  //   expenseReminders: true,
+  //   currency: "PKR",
+  //   dateFormat: "DD/MM/YYYY",
+  //   language: "English",
+  // });
 
   // Profile Handlers
   const handleProfileChange = (e) => {
@@ -154,13 +154,13 @@ const AccountSetting = () => {
     setTimeout(() => setPasswordSuccess(false), 3000);
   };
 
-  const handlePreferenceChange = (e) => {
-    const { name, value, checked, type } = e.target;
-    setPreferences({
-      ...preferences,
-      [name]: type === "checkbox" ? checked : value,
-    });
-  };
+  // const handlePreferenceChange = (e) => {
+  //   const { name, value, checked, type } = e.target;
+  //   setPreferences({
+  //     ...preferences,
+  //     [name]: type === "checkbox" ? checked : value,
+  //   });
+  // };
 
   useEffect(() => {
     const nextProfile = buildProfileData(currentAccount);
@@ -564,7 +564,7 @@ const AccountSetting = () => {
         </Card>
 
         {/* Preferences Section */}
-        <Card
+        {/* <Card
           sx={{
             mb: 3,
             borderRadius: 2,
@@ -582,7 +582,7 @@ const AccountSetting = () => {
             <Divider sx={{ mb: 2 }} />
 
             <Grid container spacing={3}>
-              {/* Notifications */}
+              
               <Grid item xs={12}>
                 <Typography
                   variant="subtitle1"
@@ -639,7 +639,6 @@ const AccountSetting = () => {
                 </Box>
               </Grid>
 
-              {/* System Settings */}
               <Grid item xs={12}>
                 <Typography
                   variant="subtitle1"
@@ -716,7 +715,7 @@ const AccountSetting = () => {
               </Button>
             </Box>
           </CardContent>
-        </Card>
+        </Card> */}
       </Box>
     </Box>
   );

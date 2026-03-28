@@ -1556,6 +1556,7 @@ export default function GenericModal({
 
             {mode === "detail-actions" && (
               <Box
+                className="modal-action-buttons"
                 sx={{
                   mt: 3,
                   display: "flex",
@@ -1724,6 +1725,7 @@ export default function GenericModal({
 
               {mode === "transaction-detail-actions" && (
                 <Box
+                  className="modal-action-buttons"
                   sx={{
                     mt: 3,
                     display: "flex",

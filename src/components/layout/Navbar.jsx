@@ -40,6 +40,7 @@ export default function Navbar() {
 
   return (
     <AppBar
+      className="app-navbar"
       position="static"
       sx={{
         backgroundColor: "#1B0D3F",
@@ -147,6 +148,12 @@ export default function Navbar() {
               onClick={() => handleCreate("/departments")}
             >
               Department
+            </MenuItem>
+            <MenuItem
+              sx={{ fontWeight: 600 }}
+              onClick={() => handleCreate("/designations")}
+            >
+              Designation
             </MenuItem>
           </Menu>
 

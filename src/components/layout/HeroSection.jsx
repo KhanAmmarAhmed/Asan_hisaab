@@ -234,6 +234,7 @@ export default function HeroSection() {
 
   return (
     <Box
+      className="hero-section"
       sx={{
         backgroundColor: "#FFFFFF",
         px: { xs: 2, md: 4 },

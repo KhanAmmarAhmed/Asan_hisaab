@@ -21,6 +21,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body.print-ledger .ledger-print-hide {
+  display: none !important;
+}
+
+.ledger-print-only {
+  display: none;
+}
+
+body.print-ledger .ledger-print-only {
+  display: block;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -37,4 +49,24 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.25);
+}
+
+@media print {
+  body.print-profit .profit-print-hide,
+  body.print-profit .hero-section,
+  body.print-profit .app-navbar,
+  body.print-profit .app-footer {
+    display: none !important;
+  }
+
+  body.print-ledger .ledger-print-hide,
+  body.print-ledger .hero-section,
+  body.print-ledger .app-navbar,
+  body.print-ledger .app-footer {
+    display: none !important;
+  }
+
+  body.print-detail-modal .modal-action-buttons {
+    display: none !important;
+  }
 }

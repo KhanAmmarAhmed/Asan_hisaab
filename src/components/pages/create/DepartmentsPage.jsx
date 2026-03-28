@@ -1,13 +1,29 @@
-import React, { useState } from "react";
-import { Box, Button } from "@mui/material";
-import { Plus } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Button,
+  Typography,
+  Alert,
+  CircularProgress,
+} from "@mui/material";
+import { Plus, Trash2, Edit2 } from "lucide-react";
 import GenericModal from "../../generic/GenericModal";
+import {
+  addDepartmentApi,
+  fetchDepartmentsApi,
+  deleteDepartmentApi,
+  updateDepartmentApi,
+} from "../../../services/departmentApi";
 
 const DepartmentsPage = () => {
   const [apiLoading, setApiLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [departments, setDepartments] = useState([]);
+  const [isFetching, setIsFetching] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState(null);
+  const [editingDepartment, setEditingDepartment] = useState(null);
 
   const departmentFields = [
     {
@@ -18,23 +34,135 @@ const DepartmentsPage = () => {
       required: true,
     },
   ];
-  const handleAddDepartment = (formData) => {
-    const newDepartment = {
-      id: Date.now(),
-      name: formData.departmentName,
-    };
 
-    setDepartments((prev) => [...prev, newDepartment]);
-    setIsModalOpen(false);
+  /**
+   * Fetch departments from API on component mount
+   */
+  useEffect(() => {
+    loadDepartments();
+  }, []);
+
+  /**
+   * Load departments from API
+   */
+  const loadDepartments = async () => {
+    try {
+      setIsFetching(true);
+      setApiError("");
+      const data = await fetchDepartmentsApi();
+      setDepartments(Array.isArray(data) ? data : []);
+    } catch (error) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to load departments";
+      setApiError(errorMessage);
+      console.error("Error loading departments:", error);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  /**
+   * Handle adding a new department
+   */
+  const handleAddDepartment = async (formData) => {
+    try {
+      setApiLoading(true);
+      setApiError("");
+
+      await addDepartmentApi({
+        departmentName: formData.departmentName,
+        status: "1",
+      });
+
+      // Reload departments to get the newly created one
+      await loadDepartments();
+      setIsModalOpen(false);
+    } catch (error) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to add department";
+      setApiError(errorMessage);
+      console.error("Error adding department:", error);
+    } finally {
+      setApiLoading(false);
+    }
+  };
+
+  /**
+   * Handle deleting a department
+   */
+  const handleDeleteDepartment = async (departmentId) => {
+    if (!window.confirm("Are you sure you want to delete this department?")) {
+      return;
+    }
+
+    try {
+      setDeleteLoading(departmentId);
+      setApiError("");
+
+      await deleteDepartmentApi(departmentId);
+
+      // Remove from local state
+      setDepartments((prev) => prev.filter((dept) => dept.id !== departmentId));
+    } catch (error) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to delete department";
+      setApiError(errorMessage);
+      console.error("Error deleting department:", error);
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
+  /**
+   * Handle opening edit modal with department data
+   */
+  const handleOpenEditModal = (department) => {
+    setEditingDepartment(department);
+    setIsEditModalOpen(true);
+  };
+
+  /**
+   * Handle saving edited department
+   */
+  const handleSaveEditDepartment = async (formData) => {
+    try {
+      setApiLoading(true);
+      setApiError("");
+
+      await updateDepartmentApi({
+        id: editingDepartment.id,
+        departmentName: formData.departmentName,
+        status: editingDepartment.status || "1",
+      });
+
+      // Reload departments to get the updated data
+      await loadDepartments();
+      setIsEditModalOpen(false);
+      setEditingDepartment(null);
+    } catch (error) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update department";
+      setApiError(errorMessage);
+      console.error("Error updating department:", error);
+    } finally {
+      setApiLoading(false);
+    }
   };
   return (
     <>
       <div className="space-y-4">
-        {/* Closing Balance Section */}
-
+        {/* Header Section */}
         <Box className="flex justify-between items-center mb-4">
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            Create/Employees
+            Create/Departments
           </Typography>
           <Button
             variant="contained"
@@ -58,18 +186,93 @@ const DepartmentsPage = () => {
           </Button>
         </Box>
 
-        <Box className="space-y-2">
-          {departments.map((dept) => (
-            <div
-              key={dept.id}
-              className="p-3 bg-white shadow rounded-lg border"
-            >
-              {dept.name}
-            </div>
-          ))}
-        </Box>
+        {/* Error Alert */}
+        {apiError && (
+          <Alert severity="error" onClose={() => setApiError("")}>
+            {apiError}
+          </Alert>
+        )}
 
-        {/* Add Account Modal */}
+        {/* Loading State */}
+        {isFetching ? (
+          <Box className="flex justify-center items-center py-8">
+            <CircularProgress />
+          </Box>
+        ) : departments.length === 0 ? (
+          /* Empty State */
+          <Box
+            className="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center"
+            sx={{
+              color: "#757575",
+              fontStyle: "italic",
+            }}
+          >
+            No departments found. Click "Add" to create one.
+          </Box>
+        ) : (
+          /* Departments List */
+          <Box className="space-y-2">
+            {departments.map((dept) => (
+              <div
+                key={dept.id}
+                className="p-3 bg-white shadow rounded-lg border flex justify-between items-center hover:shadow-md transition-shadow"
+              >
+                <div>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {dept.departments_name || dept.name || "N/A"}
+                  </Typography>
+                  {dept.status && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: dept.status === "1" ? "#4caf50" : "#f44336",
+                      }}
+                    >
+                      {dept.status === "1" ? "Active" : "Inactive"}
+                    </Typography>
+                  )}
+                </div>
+                <Box className="flex gap-2">
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={() => handleOpenEditModal(dept)}
+                    sx={{
+                      color: "#1976d2",
+                      "&:hover": {
+                        backgroundColor: "#e3f2fd",
+                      },
+                      minWidth: "auto",
+                    }}
+                  >
+                    <Edit2 size={18} />
+                  </Button>
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={() => handleDeleteDepartment(dept.id)}
+                    disabled={deleteLoading === dept.id}
+                    sx={{
+                      color: "#f44336",
+                      "&:hover": {
+                        backgroundColor: "#ffebee",
+                      },
+                      minWidth: "auto",
+                    }}
+                  >
+                    {deleteLoading === dept.id ? (
+                      <CircularProgress size={18} />
+                    ) : (
+                      <Trash2 size={18} />
+                    )}
+                  </Button>
+                </Box>
+              </div>
+            ))}
+          </Box>
+        )}
+
+        {/* Add Department Modal */}
         <GenericModal
           open={isModalOpen}
           onOpenChange={setIsModalOpen}
@@ -79,6 +282,28 @@ const DepartmentsPage = () => {
           submitButtonLabel="Add"
           loading={apiLoading}
           error={apiError}
+        />
+
+        {/* Edit Department Modal */}
+        <GenericModal
+          open={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+          fields={departmentFields}
+          onSubmit={handleSaveEditDepartment}
+          title="Edit Department"
+          submitButtonLabel="Update"
+          loading={apiLoading}
+          error={apiError}
+          initialValues={
+            editingDepartment
+              ? {
+                  departmentName:
+                    editingDepartment.departments_name ||
+                    editingDepartment.name ||
+                    "",
+                }
+              : {}
+          }
         />
       </div>
     </>

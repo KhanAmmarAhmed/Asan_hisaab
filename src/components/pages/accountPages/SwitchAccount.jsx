@@ -20,7 +20,8 @@ import { useAuth } from "@/context/AuthContext";
 
 const SwitchAccount = () => {
   const navigate = useNavigate();
-  const { accounts, currentAccount, switchAccount, removeAccount } = useAuth();
+  const { accounts, currentAccount, switchAccount, removeAccount, logout } =
+    useAuth();
 
   // If there are no accounts, show a message and link to login
   if (accounts.length === 0) {
@@ -84,8 +85,8 @@ const SwitchAccount = () => {
   const handleSwitch = (accountId) => {
     const success = switchAccount(accountId);
     if (success) {
-      // Redirect to dashboard after switching
-      navigate("/dashboard");
+      // Redirect to login page for proper account switching
+      logout("/login");
     }
   };
 
@@ -198,7 +199,7 @@ const SwitchAccount = () => {
           variant="outlined"
           fullWidth
           startIcon={<AddIcon />}
-          onClick={() => navigate("/login")}
+          onClick={() => logout("/signup")}
           sx={{
             mt: 3,
             borderColor: "#1B0D3F",

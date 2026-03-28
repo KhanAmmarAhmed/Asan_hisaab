@@ -22,9 +22,7 @@ const ACTIVE_ACCOUNT_KEY = "activeAccountId";
 const pickFirstValue = (...values) =>
   values.find(
     (value) =>
-      value !== undefined &&
-      value !== null &&
-      String(value).trim() !== "",
+      value !== undefined && value !== null && String(value).trim() !== "",
   );
 
 const normalizeProfile = (accountData) => {
@@ -206,12 +204,12 @@ export const AuthProvider = ({ children }) => {
     [saveAccount],
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback((redirectPath = "/login") => {
     clearAuthData();
     setIsAuthenticated(false);
     // Optionally clear current account or keep it for switching
     // setCurrentAccount(null);
-    window.location.href = "/login";
+    window.location.href = redirectPath;
   }, []);
 
   useEffect(() => {

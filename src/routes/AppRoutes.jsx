@@ -27,6 +27,7 @@ import SwitchAccount from "@/components/pages/accountPages/SwitchAccount";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
 import DepartmentsPage from "../components/pages/create/DepartmentsPage";
+import DesignationsPage from "../components/pages/create/DesignationsPage";
 
 export default function AppRoutes() {
   return (
@@ -83,6 +84,7 @@ export default function AppRoutes() {
         <Route path="vendors" element={<VendorsPage />} />
         <Route path="employees" element={<EmployeesPage />} />
         <Route path="departments" element={<DepartmentsPage />} />
+        <Route path="designations" element={<DesignationsPage />} />
         <Route path="profit" element={<ProfitPage />} />
         <Route path="cash-in-out" element={<CashInOutPage />} />
         <Route path="ledger" element={<LedgerPage />} />

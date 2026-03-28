@@ -18,6 +18,13 @@ export default function ProfitPage() {
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
 
+    const handlePrint = () => {
+        document.body.classList.add("print-profit");
+        const cleanup = () => document.body.classList.remove("print-profit");
+        window.addEventListener("afterprint", cleanup, { once: true });
+        window.print();
+    };
+
     const inDateRange = (itemDate) => {
         if (!fromDate && !toDate) return true;
         const d = new Date(itemDate);
@@ -56,7 +63,13 @@ export default function ProfitPage() {
             </Typography>
 
             {/* Filters */}
-            <Box display={{ md: "flex", xs: "block", sm: "flex" }} justifyContent="space-between" mb={2} flexWrap="wrap">
+            <Box
+                className="profit-print-hide"
+                display={{ md: "flex", xs: "block", sm: "flex" }}
+                justifyContent="space-between"
+                mb={2}
+                flexWrap="wrap"
+            >
                 <Box display="flex" gap={2} alignItems="center" mb={{ md: 0, xs: 2 }}>
                     <GenericDateField
                         label="From"
@@ -89,7 +102,7 @@ export default function ProfitPage() {
                         size="small"
                         startIcon={<PrintIcon />}
                         sx={{ backgroundColor: PURPLE, height: 40 }}
-                        onClick={() => window.print()}
+                        onClick={handlePrint}
                     >
                         Print PDF
                     </Button>
