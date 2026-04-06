@@ -12,7 +12,6 @@ import ListItemText from "@mui/material/ListItemText";
 import Avatar from "@mui/material/Avatar";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
-import PersonIcon from "@mui/icons-material/Person";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -20,15 +19,14 @@ import { useAuth } from "@/context/AuthContext";
 
 const SwitchAccount = () => {
   const navigate = useNavigate();
-  const { accounts, currentAccount, switchAccount, removeAccount, logout } =
-    useAuth();
+  const { accounts, currentAccount, switchAccount, removeAccount } = useAuth();
 
   // If there are no accounts, show a message and link to login
   if (accounts.length === 0) {
     return (
       <Box
         sx={{
-          // minHeight: "100vh",
+          minHeight: "100vh",
           backgroundColor: "#EEEDF2",
           display: "flex",
           alignItems: "center",
@@ -54,14 +52,14 @@ const SwitchAccount = () => {
               textAlign: "center",
             }}
           >
-            No Saved Accounts
+            No Accounts Available
           </Typography>
           <Typography
             variant="body1"
             color="text.secondary"
             sx={{ mb: 3, textAlign: "center" }}
           >
-            You haven't saved any accounts yet. Login to add an account.
+            No accounts have been added yet. Please log in to create an account.
           </Typography>
           <Button
             variant="contained"
@@ -85,14 +83,18 @@ const SwitchAccount = () => {
   const handleSwitch = (accountId) => {
     const success = switchAccount(accountId);
     if (success) {
-      // Redirect to login page for proper account switching
-      logout("/login");
+      // Navigate to dashboard after switching account
+      navigate("/dashboard");
     }
   };
 
   const handleRemove = (e, accountId) => {
     e.stopPropagation();
-    if (window.confirm("Are you sure you want to remove this account?")) {
+    if (
+      window.confirm(
+        "Are you sure you want to remove this account? This action cannot be undone.",
+      )
+    ) {
       removeAccount(accountId);
     }
   };
@@ -110,10 +112,11 @@ const SwitchAccount = () => {
           variant="h5"
           sx={{ color: "#1B0D3F", fontWeight: 700, mb: 1 }}
         >
-          Switch Account
+          Account Management
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Select an account to switch to. Your current session will be updated.
+          Select an account below to switch to. Your current session will be
+          updated accordingly.
         </Typography>
 
         <Card
@@ -134,7 +137,7 @@ const SwitchAccount = () => {
                       )}
                       <IconButton
                         edge="end"
-                        aria-label="remove account"
+                        aria-label={`Remove ${account.name || "account"}`}
                         onClick={(e) => handleRemove(e, account.id)}
                         sx={{
                           color: "#f44336",
@@ -166,9 +169,9 @@ const SwitchAccount = () => {
                           height: 48,
                         }}
                       >
-                        {account.label
+                        {account.name
                           ? account.name.charAt(0).toUpperCase()
-                          : "U"}
+                          : "A"}
                       </Avatar>
                     </ListItemIcon>
                     <ListItemText
@@ -199,7 +202,8 @@ const SwitchAccount = () => {
           variant="outlined"
           fullWidth
           startIcon={<AddIcon />}
-          onClick={() => logout("/signup")}
+          onClick={() => navigate("/login")}
+          aria-label="Add new account"
           sx={{
             mt: 3,
             borderColor: "#1B0D3F",

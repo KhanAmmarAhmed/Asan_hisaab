@@ -102,8 +102,8 @@ export default function InvoicesPage() {
 
   const resetPayableData = () => {
     setPayableData({
-      entityName: "",        // renamed from employee
-      entityCategory: "",    // new field
+      entityName: "", // renamed from employee
+      entityCategory: "", // new field
       dueDate: "",
       amount: "",
       discount: "",
@@ -119,9 +119,17 @@ export default function InvoicesPage() {
   const handleChange = (fieldId, value, setFormData, formData) => {
     let updatedData = { ...formData, [fieldId]: value };
 
-    if (fieldId === "amount" || fieldId === "discount" || fieldId === "taxAble") {
-      const amount = Number(fieldId === "amount" ? value : formData.amount || 0);
-      const discount = Number(fieldId === "discount" ? value : formData.discount || 0);
+    if (
+      fieldId === "amount" ||
+      fieldId === "discount" ||
+      fieldId === "taxAble"
+    ) {
+      const amount = Number(
+        fieldId === "amount" ? value : formData.amount || 0,
+      );
+      const discount = Number(
+        fieldId === "discount" ? value : formData.discount || 0,
+      );
       const subTotal = amount - discount;
       const isTaxable = fieldId === "taxAble" ? value : formData.taxAble;
       const tax = isTaxable === "Yes" ? subTotal * 0.15 : 0;
@@ -260,7 +268,7 @@ export default function InvoicesPage() {
     const entityTypeMap = {
       customer: "Customer",
       employee: "Employee",
-      vendor: "Vendor"
+      vendor: "Vendor",
     };
 
     const newEntry = {
@@ -302,18 +310,19 @@ export default function InvoicesPage() {
     const tax = isTaxable ? subTotal * 0.15 : 0;
     const grandTotal = subTotal + tax;
 
-    const previewData = modalMode === "receivable-step2"
-      ? { ...receivableData, ...formData, type: "Receivable" }
-      : {
-        ...payableData,
-        ...formData,
-        type: "Payable",
-        amount: itemsTotal,
-        discount,
-        subTotal,
-        grandTotal,
-        entityCategory: payableData.entityCategory || "employee",
-      };
+    const previewData =
+      modalMode === "receivable-step2"
+        ? { ...receivableData, ...formData, type: "Receivable" }
+        : {
+            ...payableData,
+            ...formData,
+            type: "Payable",
+            amount: itemsTotal,
+            discount,
+            subTotal,
+            grandTotal,
+            entityCategory: payableData.entityCategory || "employee",
+          };
     setSelectedRow(previewData);
     setModalMode("transaction-detail-actions");
   };
@@ -473,7 +482,7 @@ export default function InvoicesPage() {
       <GenericTable
         columns={tableColumns}
         data={filteredData}
-        emptyMessage="No income entries found"
+        emptyMessage="No invoice entries found"
         onRowClick={(row) => {
           setSelectedRow(row);
           setModalMode("transaction-detail-actions");
@@ -518,14 +527,16 @@ export default function InvoicesPage() {
                   ? handlePayableStep1Submit
                   : modalMode === "payable-step1.5"
                     ? (data) => {
-                      handlePayableStep1_5Submit(data);
-                    }
+                        handlePayableStep1_5Submit(data);
+                      }
                     : modalMode === "payable-step2"
                       ? handlePayableStep2Submit
                       : handleAddInvoices
         }
         submitButtonLabel={
-          modalMode === "receivable-step1" || modalMode === "payable-step1" || modalMode === "payable-step1.5"
+          modalMode === "receivable-step1" ||
+          modalMode === "payable-step1" ||
+          modalMode === "payable-step1.5"
             ? "Next"
             : modalMode === "receivable-step2" || modalMode === "payable-step2"
               ? "Create Invoice"
@@ -546,9 +557,13 @@ export default function InvoicesPage() {
         onBack={
           modalMode === "transaction-detail-actions"
             ? () => {
-              setModalMode(selectedRow?.type === "Receivable" ? "receivable-step2" : "payable-step2");
-              setSelectedRow(null);
-            }
+                setModalMode(
+                  selectedRow?.type === "Receivable"
+                    ? "receivable-step2"
+                    : "payable-step2",
+                );
+                setSelectedRow(null);
+              }
             : modalMode === "receivable-step2" || modalMode === "payable-step2"
               ? handleBackToStep1
               : modalMode === "payable-step1.5"
@@ -559,9 +574,17 @@ export default function InvoicesPage() {
           setFormData((prev) => {
             let updatedData = { ...prev, [fieldId]: value };
 
-            if (fieldId === "amount" || fieldId === "discount" || fieldId === "taxAble") {
-              const amount = Number(fieldId === "amount" ? value : prev.amount || 0);
-              const discount = Number(fieldId === "discount" ? value : prev.discount || 0);
+            if (
+              fieldId === "amount" ||
+              fieldId === "discount" ||
+              fieldId === "taxAble"
+            ) {
+              const amount = Number(
+                fieldId === "amount" ? value : prev.amount || 0,
+              );
+              const discount = Number(
+                fieldId === "discount" ? value : prev.discount || 0,
+              );
               const subTotal = amount - discount;
               const isTaxable = fieldId === "taxAble" ? value : prev.taxAble;
               const tax = isTaxable === "Yes" ? subTotal * 0.15 : 0;
