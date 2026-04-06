@@ -20,42 +20,43 @@ import {
 
 const STORAGE_KEY = "cashbook_accounts";
 
-// Bank options with images
+// Bank options — labels MUST match the bank_name values returned by the API
+// exactly so that the name-based lookup in mapApiAccountToUi always resolves.
 const BANK_OPTIONS = [
   {
     label: "UBL",
     value: "UBL",
     image: UBL,
     type: "ubl",
-    bankId: 1,
+    bankId: 4,          // backend bank_id for UBL
   },
   {
     label: "HBL",
     value: "HBL",
     image: HBL,
     type: "hbl",
-    bankId: 2,
+    bankId: 3,          // backend bank_id for HBL
   },
   {
     label: "Faisal Bank",
     value: "Faisal Bank",
     image: FaisalBank,
     type: "faisal-bank",
-    bankId: 3,
+    bankId: 2,          // backend bank_id for Faisal Bank
   },
   {
-    label: "Standard Charter",
-    value: "Standard Charter",
+    label: "Standard Chartered",
+    value: "Standard Chartered",
     image: StandardCharter,
-    type: "standard-charter",
-    bankId: 4,
+    type: "standard-chartered",
+    bankId: 1,          // backend bank_id for Standard Chartered
   },
   {
     label: "Bank of Punjab",
     value: "Bank of Punjab",
     image: BankOfPunjab,
     type: "bank-of-punjab",
-    bankId: 5,
+    bankId: 5,          // backend bank_id for Bank of Punjab
   },
   {
     label: "Bank of Islami",
@@ -65,6 +66,17 @@ const BANK_OPTIONS = [
     bankId: 6,
   },
 ];
+
+// Fast O(1) lookup: bank_name (lowercase) → BANK_OPTIONS entry
+const BANK_BY_NAME = Object.fromEntries(
+  BANK_OPTIONS.map((b) => [b.label.toLowerCase(), b]),
+);
+
+// Fast O(1) lookup: bank_id (string) → BANK_OPTIONS entry
+const BANK_BY_ID = Object.fromEntries(
+  BANK_OPTIONS.map((b) => [String(b.bankId), b]),
+);
+
 
 const getInitialAccounts = () => {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -138,18 +150,21 @@ export default function CashbookPage() {
     let isMounted = true;
 
     const mapApiAccountToUi = (acc) => {
-      const bankId = acc?.bank_id ?? acc?.bankId ?? acc?.bankID ?? null;
-      const bankLabelFromApi =
-        acc?.bank_label ?? acc?.bankLabel ?? acc?.bank_name ?? acc?.bankName;
+      // Prioritise bank_name (authoritative text from DB) over bank_id
+      // because the frontend bankId values must match the backend exactly.
+      const bankNameFromApi =
+        acc?.bank_name ?? acc?.bankName ?? acc?.bank_label ?? acc?.bankLabel;
+      const bankIdFromApi = acc?.bank_id ?? acc?.bankId ?? acc?.bankID;
 
       const bankDetails =
-        (bankId
-          ? BANK_OPTIONS.find((b) => String(b.bankId) === String(bankId))
+        (bankNameFromApi
+          ? BANK_BY_NAME[bankNameFromApi.toLowerCase()] ||
+            BANK_OPTIONS.find((b) =>
+              b.label.toLowerCase().includes(bankNameFromApi.toLowerCase()),
+            )
           : null) ||
-        (bankLabelFromApi
-          ? BANK_OPTIONS.find((b) => b.label === bankLabelFromApi)
-          : null) ||
-        BANK_OPTIONS[0];
+        (bankIdFromApi ? BANK_BY_ID[String(bankIdFromApi)] : null) ||
+        null; // unknown bank → will show generic icon
 
       const accountTitle =
         acc?.account_title ?? acc?.accountTitle ?? acc?.name ?? "";
@@ -170,14 +185,15 @@ export default function CashbookPage() {
           acc?.bankAccountId ??
           Date.now() + Math.random(),
         name: accountTitle,
-        bankLabel: bankDetails?.label || bankLabelFromApi || "",
-        bankType: bankDetails?.type,
-        bankImage: bankDetails?.image,
+        bankLabel: bankDetails?.label ?? bankNameFromApi ?? "",
+        bankType: bankDetails?.type ?? "",
+        bankImage: bankDetails?.image ?? null,
         type: "bank",
         accountNumber,
         balance: formatRs(openingBalance),
       };
     };
+
 
     (async () => {
       try {
@@ -194,10 +210,15 @@ export default function CashbookPage() {
     };
   }, []);
 
-  // Helper function to get bank details by label
+  // Helper: resolve bank details from a label/name string (case-insensitive)
   const getBankDetails = (bankLabel) => {
+    if (!bankLabel) return BANK_OPTIONS[0];
     return (
-      BANK_OPTIONS.find((bank) => bank.label === bankLabel) || BANK_OPTIONS[0]
+      BANK_BY_NAME[bankLabel.toLowerCase()] ||
+      BANK_OPTIONS.find((b) =>
+        b.label.toLowerCase().includes(bankLabel.toLowerCase()),
+      ) ||
+      BANK_OPTIONS[0]
     );
   };
 

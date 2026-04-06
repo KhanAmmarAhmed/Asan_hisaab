@@ -472,6 +472,7 @@
 // };
 
 import React, { createContext, useState, useEffect, useMemo } from "react";
+import { useAuth } from "./AuthContext";
 import { fetchCustomersApi } from "../services/customerApi";
 import { fetchEmployeesApi } from "../services/employeeApi";
 import { fetchVendorsApi } from "../services/vendorApi";
@@ -602,6 +603,10 @@ const DEFAULT_PROJECTS = [
 ];
 
 export const DataProvider = ({ children }) => {
+  // Only fetch data when the user is authenticated to avoid
+  // wasted requests and console warnings on login/signup pages.
+  const { isAuthenticated } = useAuth();
+
   // Customers are now API‑backed – start with empty array
   const [customers, setCustomers] = useState([]);
 
@@ -623,8 +628,22 @@ export const DataProvider = ({ children }) => {
   // Expenses are API-backed
   const [expenses, setExpenses] = useState([]);
 
-  // Fetch customers from API on mount
+  // Reset all data when user logs out — prevents stale data leaking between sessions.
   useEffect(() => {
+    if (!isAuthenticated) {
+      setCustomers([]);
+      setVendors([]);
+      setEmployees([]);
+      setProjects([]);
+      setInvoices([]);
+      setIncome([]);
+      setExpenses([]);
+    }
+  }, [isAuthenticated]);
+
+  // Fetch customers from API — only when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
     let isMounted = true;
 
     const mapCustomer = (c) => ({
@@ -652,10 +671,11 @@ export const DataProvider = ({ children }) => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isAuthenticated]);
 
-  // Fetch employees from API on mount
+  // Fetch employees from API — only when authenticated
   useEffect(() => {
+    if (!isAuthenticated) return;
     let isMounted = true;
 
     const mapEmployee = (e) => ({
@@ -684,10 +704,11 @@ export const DataProvider = ({ children }) => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isAuthenticated]);
 
-  // Fetch vendors from API on mount
+  // Fetch vendors from API — only when authenticated
   useEffect(() => {
+    if (!isAuthenticated) return;
     let isMounted = true;
 
     const mapVendor = (v) => ({
@@ -714,10 +735,11 @@ export const DataProvider = ({ children }) => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isAuthenticated]);
 
-  // Fetch projects from API on mount
+  // Fetch projects from API — only when authenticated
   useEffect(() => {
+    if (!isAuthenticated) return;
     let isMounted = true;
     (async () => {
       try {
@@ -729,10 +751,11 @@ export const DataProvider = ({ children }) => {
       }
     })();
     return () => { isMounted = false; };
-  }, []);
+  }, [isAuthenticated]);
 
-  // Fetch invoices from API on mount
+  // Fetch invoices from API — only when authenticated
   useEffect(() => {
+    if (!isAuthenticated) return;
     let isMounted = true;
     (async () => {
       try {
@@ -744,10 +767,11 @@ export const DataProvider = ({ children }) => {
       }
     })();
     return () => { isMounted = false; };
-  }, []);
+  }, [isAuthenticated]);
 
-  // Fetch income transactions from API on mount
+  // Fetch income transactions from API — only when authenticated
   useEffect(() => {
+    if (!isAuthenticated) return;
     let isMounted = true;
     (async () => {
       try {
@@ -759,10 +783,11 @@ export const DataProvider = ({ children }) => {
       }
     })();
     return () => { isMounted = false; };
-  }, []);
+  }, [isAuthenticated]);
 
-  // Fetch expense transactions from API on mount
+  // Fetch expense transactions from API — only when authenticated
   useEffect(() => {
+    if (!isAuthenticated) return;
     let isMounted = true;
     (async () => {
       try {
@@ -774,7 +799,7 @@ export const DataProvider = ({ children }) => {
       }
     })();
     return () => { isMounted = false; };
-  }, []);
+  }, [isAuthenticated]);
 
   // --- Helper Actions ---
   const addCustomer = (customer) => setCustomers((prev) => [customer, ...prev]);
