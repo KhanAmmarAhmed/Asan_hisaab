@@ -46,16 +46,6 @@ const AccountSetting = () => {
   );
   const [profileSuccess, setProfileSuccess] = useState(false);
 
-  // Company State
-  const [companyData, setCompanyData] = useState({
-    companyName: "ABC Trading Company",
-    registrationNumber: "REG-001234",
-    address: "123 Main Street, Karachi",
-    city: "Karachi",
-  });
-  const [isEditingCompany, setIsEditingCompany] = useState(false);
-  const [companyFormData, setCompanyFormData] = useState(companyData);
-  const [companySuccess, setCompanySuccess] = useState(false);
 
   // Password State
   const [passwordData, setPasswordData] = useState({
@@ -67,16 +57,6 @@ const AccountSetting = () => {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState("");
 
-  // Preferences State
-  // const [preferences, setPreferences] = useState({
-  //   emailNotifications: true,
-  //   smsNotifications: false,
-  //   monthlyReports: true,
-  //   expenseReminders: true,
-  //   currency: "PKR",
-  //   dateFormat: "DD/MM/YYYY",
-  //   language: "English",
-  // });
 
   // Profile Handlers
   const handleProfileChange = (e) => {
@@ -109,23 +89,8 @@ const AccountSetting = () => {
     setIsEditingProfile(false);
   };
 
-  // Company Handlers
-  const handleCompanyChange = (e) => {
-    const { name, value } = e.target;
-    setCompanyFormData({ ...companyFormData, [name]: value });
-  };
 
-  const handleSaveCompany = () => {
-    setCompanyData(companyFormData);
-    setIsEditingCompany(false);
-    setCompanySuccess(true);
-    setTimeout(() => setCompanySuccess(false), 3000);
-  };
 
-  const handleCancelCompany = () => {
-    setCompanyFormData(companyData);
-    setIsEditingCompany(false);
-  };
 
   // Password Handlers
   const handlePasswordChange = (e) => {
@@ -153,15 +118,6 @@ const AccountSetting = () => {
     setShowPasswordForm(false);
     setTimeout(() => setPasswordSuccess(false), 3000);
   };
-
-  // const handlePreferenceChange = (e) => {
-  //   const { name, value, checked, type } = e.target;
-  //   setPreferences({
-  //     ...preferences,
-  //     [name]: type === "checkbox" ? checked : value,
-  //   });
-  // };
-
   useEffect(() => {
     const nextProfile = buildProfileData(currentAccount);
     setProfileData(nextProfile);
@@ -312,133 +268,6 @@ const AccountSetting = () => {
           </CardContent>
         </Card>
 
-        {/* Company Information Section */}
-        <Card
-          sx={{
-            mb: 3,
-            borderRadius: 2,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-          }}
-        >
-          <CardContent sx={{ p: 3 }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 2,
-              }}
-            >
-              <Typography
-                variant="h6"
-                sx={{ fontWeight: 700, color: "#1B0D3F" }}
-              >
-                Company Information
-              </Typography>
-              {!isEditingCompany && (
-                <Button
-                  startIcon={<EditIcon />}
-                  onClick={() => setIsEditingCompany(true)}
-                  sx={{
-                    color: "#1B0D3F",
-                    textTransform: "none",
-                    fontWeight: 600,
-                  }}
-                >
-                  Edit
-                </Button>
-              )}
-            </Box>
-
-            {companySuccess && (
-              <Alert severity="success" sx={{ mb: 2 }}>
-                Company information updated successfully!
-              </Alert>
-            )}
-
-            <Divider sx={{ mb: 2 }} />
-
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Company Name"
-                  name="companyName"
-                  value={companyFormData.companyName}
-                  onChange={handleCompanyChange}
-                  disabled={!isEditingCompany}
-                  variant={isEditingCompany ? "outlined" : "standard"}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Registration Number"
-                  name="registrationNumber"
-                  value={companyFormData.registrationNumber}
-                  onChange={handleCompanyChange}
-                  disabled={!isEditingCompany}
-                  variant={isEditingCompany ? "outlined" : "standard"}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Address"
-                  name="address"
-                  value={companyFormData.address}
-                  onChange={handleCompanyChange}
-                  disabled={!isEditingCompany}
-                  variant={isEditingCompany ? "outlined" : "standard"}
-                  multiline
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="City"
-                  name="city"
-                  value={companyFormData.city}
-                  onChange={handleCompanyChange}
-                  disabled={!isEditingCompany}
-                  variant={isEditingCompany ? "outlined" : "standard"}
-                />
-              </Grid>
-            </Grid>
-
-            {isEditingCompany && (
-              <Box sx={{ display: "flex", gap: 2, mt: 3 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<SaveIcon />}
-                  onClick={handleSaveCompany}
-                  sx={{
-                    backgroundColor: "#1B0D3F",
-                    color: "white",
-                    textTransform: "none",
-                    fontWeight: 600,
-                    "&:hover": { backgroundColor: "#388E3C" },
-                  }}
-                >
-                  Save
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<CancelIcon />}
-                  onClick={handleCancelCompany}
-                  sx={{
-                    color: "#1B0D3F",
-                    borderColor: "#1B0D3F",
-                    textTransform: "none",
-                    fontWeight: 600,
-                  }}
-                >
-                  Cancel
-                </Button>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Password Section */}
         <Card

@@ -6,7 +6,7 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { Plus, Trash2, Edit2 } from "lucide-react";
+import { Plus, Edit2 } from "lucide-react";
 import GenericModal from "../../generic/GenericModal";
 import {
   addDepartmentApi,
@@ -162,7 +162,7 @@ const DepartmentsPage = () => {
         {/* Header Section */}
         <Box className="flex justify-between items-center mb-4">
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            Create/Departments
+            Departments
           </Typography>
           <Button
             variant="contained"
@@ -247,25 +247,7 @@ const DepartmentsPage = () => {
                   >
                     <Edit2 size={18} />
                   </Button>
-                  <Button
-                    variant="text"
-                    size="small"
-                    onClick={() => handleDeleteDepartment(dept.id)}
-                    disabled={deleteLoading === dept.id}
-                    sx={{
-                      color: "#f44336",
-                      "&:hover": {
-                        backgroundColor: "#ffebee",
-                      },
-                      minWidth: "auto",
-                    }}
-                  >
-                    {deleteLoading === dept.id ? (
-                      <CircularProgress size={18} />
-                    ) : (
-                      <Trash2 size={18} />
-                    )}
-                  </Button>
+
                 </Box>
               </div>
             ))}
@@ -297,11 +279,11 @@ const DepartmentsPage = () => {
           initialValues={
             editingDepartment
               ? {
-                  departmentName:
-                    editingDepartment.departments_name ||
-                    editingDepartment.name ||
-                    "",
-                }
+                departmentName:
+                  editingDepartment.departments_name ||
+                  editingDepartment.name ||
+                  "",
+              }
               : {}
           }
         />

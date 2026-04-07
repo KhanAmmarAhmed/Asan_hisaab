@@ -16,9 +16,7 @@ import {
   deleteDesignationApi,
   updateDesignationApi,
 } from "../../../services/designationApi";
-import {
-  fetchDepartmentsApi,
-} from "../../../services/departmentApi";
+import { fetchDepartmentsApi } from "../../../services/departmentApi";
 
 const DesignationsPage = () => {
   const [apiLoading, setApiLoading] = useState(false);
@@ -32,48 +30,54 @@ const DesignationsPage = () => {
   const [editingDesignation, setEditingDesignation] = useState(null);
 
   // ✅ Memoize fields to update when departments change
-  const addDesignationFields = useMemo(() => [
-    {
-      id: "departmentId",
-      label: "Department",
-      type: "select",
-      placeholder: "Select department",
-      required: true,
-      options: (departments || []).map((dept) => ({
-        value: dept.id,
-        label: dept.departments_name || dept.name || "N/A",
-      })),
-    },
-    {
-      id: "designationName",
-      label: "Designation Name",
-      type: "text",
-      placeholder: "Enter designation name",
-      required: true,
-    },
-  ], [departments]);
+  const addDesignationFields = useMemo(
+    () => [
+      {
+        id: "departmentId",
+        label: "Department",
+        type: "select",
+        placeholder: "Select department",
+        required: true,
+        options: (departments || []).map((dept) => ({
+          value: dept.id,
+          label: dept.departments_name || dept.name || "N/A",
+        })),
+      },
+      {
+        id: "designationName",
+        label: "Designation Name",
+        type: "text",
+        placeholder: "Enter designation name",
+        required: true,
+      },
+    ],
+    [departments],
+  );
 
   // ✅ Fields for editing designation (with department)
-  const editDesignationFields = useMemo(() => [
-    {
-      id: "departmentId",
-      label: "Department",
-      type: "select",
-      placeholder: "Select department",
-      required: true,
-      options: (departments || []).map((dept) => ({
-        value: dept.id,
-        label: dept.departments_name || dept.name || "N/A",
-      })),
-    },
-    {
-      id: "designationName",
-      label: "Designation Name",
-      type: "text",
-      placeholder: "Enter designation name",
-      required: true,
-    },
-  ], [departments]);
+  const editDesignationFields = useMemo(
+    () => [
+      {
+        id: "departmentId",
+        label: "Department",
+        type: "select",
+        placeholder: "Select department",
+        required: true,
+        options: (departments || []).map((dept) => ({
+          value: dept.id,
+          label: dept.departments_name || dept.name || "N/A",
+        })),
+      },
+      {
+        id: "designationName",
+        label: "Designation Name",
+        type: "text",
+        placeholder: "Enter designation name",
+        required: true,
+      },
+    ],
+    [departments],
+  );
 
   useEffect(() => {
     loadDepartments();
@@ -188,11 +192,11 @@ const DesignationsPage = () => {
   };
 
   return (
-    <Box p={3}>
+    <Box>
       {/* Header */}
       <Box display="flex" justifyContent="space-between" mb={3}>
         <Typography variant="h5" fontWeight={600}>
-          Create / Designations
+          Designations
         </Typography>
 
         <Button

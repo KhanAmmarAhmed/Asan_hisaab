@@ -108,9 +108,9 @@ const accountModalFields = [
   },
   {
     id: "accountNumber",
-    label: "Account Number (IBAN)",
-    type: "number",
-    placeholder: "Enter account number",
+    label: "Account Number / IBAN",
+    type: "text",
+    placeholder: "Enter account number or IBAN",
     required: true,
   },
   {
@@ -159,20 +159,21 @@ export default function CashbookPage() {
       const bankDetails =
         (bankNameFromApi
           ? BANK_BY_NAME[bankNameFromApi.toLowerCase()] ||
-            BANK_OPTIONS.find((b) =>
-              b.label.toLowerCase().includes(bankNameFromApi.toLowerCase()),
-            )
+          BANK_OPTIONS.find((b) =>
+            b.label.toLowerCase().includes(bankNameFromApi.toLowerCase()),
+          )
           : null) ||
         (bankIdFromApi ? BANK_BY_ID[String(bankIdFromApi)] : null) ||
         null; // unknown bank → will show generic icon
 
       const accountTitle =
         acc?.account_title ?? acc?.accountTitle ?? acc?.name ?? "";
+      // Prefer IBAN (fuller identifier) over account_number when available.
       const accountNumber =
-        acc?.account_number ??
-        acc?.accountNumber ??
         acc?.iban ??
         acc?.IBAN ??
+        acc?.account_number ??
+        acc?.accountNumber ??
         "";
       const openingBalance =
         acc?.opening_balance ?? acc?.openingBalance ?? acc?.balance ?? 0;
@@ -298,13 +299,13 @@ export default function CashbookPage() {
             {companyInfo?.type || "Company Type"}
           </p>
         </div>
-        <button
+        {/* <button
           onClick={() => setIsEditingCompany(true)}
           className="p-2 hover:bg-white/10 rounded-lg transition"
           aria-label="Edit company info"
         >
           <Edit size={30} />
-        </button>
+        </button> */}
       </div>
 
       {/* Closing Balance Section */}

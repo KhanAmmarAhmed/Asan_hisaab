@@ -89,7 +89,8 @@ export default function AppRoutes() {
         <Route path="cash-in-out" element={<CashInOutPage />} />
         <Route path="ledger" element={<LedgerPage />} />
         <Route path="account-settings" element={<AccountSetting />} />
-        <Route path="/switch-account" element={<SwitchAccount />} />
+        {/* <Route path="/switch-account" element={<SwitchAccount />} /> */}
+        <Route path="switch-account" element={<SwitchAccount />} />
         {/* Catch-all for undefined routes */}
         <Route path="*" element={<PageNotFound />} />
       </Route>
