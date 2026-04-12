@@ -16,6 +16,14 @@ import { setApiLogoutHandler } from "../services/apiClient";
 
 const AuthContext = createContext();
 
+const getLoginPath = () => {
+  const base = (import.meta?.env?.BASE_URL || "/").trim();
+  if (!base || base === "/") return "/assanaccounting/login";
+  // Remove trailing slash to avoid double slashes
+  const normalized = base.endsWith("/") ? base.slice(0, -1) : base;
+  return `${normalized}/login`;
+};
+
 const ACCOUNTS_KEY = "accounts";
 const ACTIVE_ACCOUNT_KEY = "activeAccountId";
 
@@ -204,12 +212,17 @@ export const AuthProvider = ({ children }) => {
     [saveAccount],
   );
 
-  const logout = useCallback((redirectPath = "/login") => {
+  const logout = useCallback((redirectPath) => {
     clearAuthData();
     setIsAuthenticated(false);
     // Optionally clear current account or keep it for switching
     // setCurrentAccount(null);
-    window.location.href = redirectPath;
+    const safeRedirect =
+      typeof redirectPath === "string" && redirectPath.trim() !== ""
+        ? redirectPath
+        : getLoginPath();
+    console.log("🚪 Logging out - redirecting to:", safeRedirect);
+    window.location.href = safeRedirect;
   }, []);
 
   useEffect(() => {

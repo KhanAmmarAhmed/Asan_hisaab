@@ -40,7 +40,7 @@ const DesignationsPage = () => {
         required: true,
         options: (departments || []).map((dept) => ({
           value: dept.id,
-          label: dept.departments_name || dept.name || "N/A",
+          label: dept.department_name || "N/A",
         })),
       },
       {

@@ -67,7 +67,22 @@ export const addIncomeTransactionApi = async (transactionData) => {
   }
 
   // Add optional but commonly used fields
-  appendIfPresent(formData, "customer_name", transactionData?.customerName);
+  const entityType = transactionData?.entity || "customer";
+  const entityName =
+    transactionData?.entityName ||
+    transactionData?.customerName ||
+    transactionData?.vendorName ||
+    transactionData?.employeeName;
+  if (entityName) {
+    const nameField =
+      entityType === "employee"
+        ? "employee_name"
+        : entityType === "vendor"
+          ? "vendor_name"
+          : "customer_name";
+    formData.append(nameField, entityName);
+    formData.append("entity_name", entityName);
+  }
   appendIfPresent(formData, "payment_method", transactionData?.paymentMethod);
   appendIfPresent(formData, "amount", transactionData?.amount);
   appendIfPresent(formData, "description", transactionData?.description);

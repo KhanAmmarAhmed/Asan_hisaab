@@ -413,8 +413,9 @@ export default function GenericModal({
                       value={formData[field.id] || ""}
                       onChange={(e) => handleChange(field.id, e.target.value)}
                       size="small"
-                      options={field.options}
+                      options={field.options || []}
                       renderOption={field.renderOption}
+                      placeholder={field.placeholder}
                       fullWidth
                       sx={{
                         "& .MuiOutlinedInput-root": {

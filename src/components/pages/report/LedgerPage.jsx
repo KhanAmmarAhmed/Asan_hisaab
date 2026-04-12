@@ -273,7 +273,14 @@ export default function LedgerPage() {
           <Box sx={{ backgroundColor: PURPLE, color: "#fff", px: 3, py: 1.5 }}>
             <Typography fontWeight={600}>Transaction Ledger</Typography>
           </Box>
-          <Table size="small">
+          <Box
+            sx={{
+              width: "100%",
+              overflowX: "auto",
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            <Table size="small" sx={{ minWidth: 720 }}>
             <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
@@ -367,7 +374,8 @@ export default function LedgerPage() {
                 </TableCell>
               </TableRow>
             </TableBody>
-          </Table>
+            </Table>
+          </Box>
         </Paper>
       )}
     </Box>

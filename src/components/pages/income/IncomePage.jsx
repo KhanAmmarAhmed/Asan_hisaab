@@ -56,8 +56,7 @@ export default function IncomePage() {
 
   const handlePrint = () => {
     document.body.classList.add("print-detail-modal");
-    const cleanup = () =>
-      document.body.classList.remove("print-detail-modal");
+    const cleanup = () => document.body.classList.remove("print-detail-modal");
     window.addEventListener("afterprint", cleanup, { once: true });
     window.print();
   };
@@ -70,16 +69,17 @@ export default function IncomePage() {
     // First check if the API response includes a name field
     if (
       item.customer_name ||
-      item.entity ||
       item.entity_name ||
       item.vendor_name ||
-      item.employee_name
+      item.employee_name ||
+      item.entity
     ) {
       return (
         item.customer_name ||
-        item.entity ||
+        item.entity_name ||
         item.vendor_name ||
-        item.employee_name
+        item.employee_name ||
+        item.entity
       );
     }
 
@@ -174,6 +174,7 @@ export default function IncomePage() {
         entity: entityType,
         accountHead: formData.accountHead || "",
         accountHeadId: undefined, // Will be generated from accountHead name
+        entityName: formData.entityName || "",
         customerName: formData.entityName || "",
         paymentMethod: formData.paymentMethod || "",
         amount: Number(formData.amount || 0),
@@ -244,6 +245,7 @@ export default function IncomePage() {
           const apiResponse = await addIncomeTransactionApi({
             entity: selectedRow.entityType || "customer" || "employee",
             accountHead: formData.accountHead,
+            entityName: formData.entityName,
             customerName: formData.entityName,
             paymentMethod: formData.paymentMethod,
             amount: formData.amount,

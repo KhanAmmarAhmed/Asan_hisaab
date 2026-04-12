@@ -28,43 +28,43 @@ const BANK_OPTIONS = [
     value: "UBL",
     image: UBL,
     type: "ubl",
-    bankId: 4,          // backend bank_id for UBL
+    bankId: 4, // backend bank_id for UBL
   },
   {
     label: "HBL",
     value: "HBL",
     image: HBL,
     type: "hbl",
-    bankId: 3,          // backend bank_id for HBL
+    bankId: 3, // backend bank_id for HBL
   },
-  {
-    label: "Faisal Bank",
-    value: "Faisal Bank",
-    image: FaisalBank,
-    type: "faisal-bank",
-    bankId: 2,          // backend bank_id for Faisal Bank
-  },
-  {
-    label: "Standard Chartered",
-    value: "Standard Chartered",
-    image: StandardCharter,
-    type: "standard-chartered",
-    bankId: 1,          // backend bank_id for Standard Chartered
-  },
-  {
-    label: "Bank of Punjab",
-    value: "Bank of Punjab",
-    image: BankOfPunjab,
-    type: "bank-of-punjab",
-    bankId: 5,          // backend bank_id for Bank of Punjab
-  },
-  {
-    label: "Bank of Islami",
-    value: "Bank of Islami",
-    image: BankOfIslami,
-    type: "bank-of-islami",
-    bankId: 6,
-  },
+  // {
+  //   label: "Faisal Bank",
+  //   value: "Faisal Bank",
+  //   image: FaisalBank,
+  //   type: "faisal-bank",
+  //   bankId: 2,          // backend bank_id for Faisal Bank
+  // },
+  // {
+  //   label: "Standard Chartered",
+  //   value: "Standard Chartered",
+  //   image: StandardCharter,
+  //   type: "standard-chartered",
+  //   bankId: 1,          // backend bank_id for Standard Chartered
+  // },
+  // {
+  //   label: "Bank of Punjab",
+  //   value: "Bank of Punjab",
+  //   image: BankOfPunjab,
+  //   type: "bank-of-punjab",
+  //   bankId: 5,          // backend bank_id for Bank of Punjab
+  // },
+  // {
+  //   label: "Bank of Islami",
+  //   value: "Bank of Islami",
+  //   image: BankOfIslami,
+  //   type: "bank-of-islami",
+  //   bankId: 6,
+  // },
 ];
 
 // Fast O(1) lookup: bank_name (lowercase) → BANK_OPTIONS entry
@@ -76,7 +76,6 @@ const BANK_BY_NAME = Object.fromEntries(
 const BANK_BY_ID = Object.fromEntries(
   BANK_OPTIONS.map((b) => [String(b.bankId), b]),
 );
-
 
 const getInitialAccounts = () => {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -159,9 +158,9 @@ export default function CashbookPage() {
       const bankDetails =
         (bankNameFromApi
           ? BANK_BY_NAME[bankNameFromApi.toLowerCase()] ||
-          BANK_OPTIONS.find((b) =>
-            b.label.toLowerCase().includes(bankNameFromApi.toLowerCase()),
-          )
+            BANK_OPTIONS.find((b) =>
+              b.label.toLowerCase().includes(bankNameFromApi.toLowerCase()),
+            )
           : null) ||
         (bankIdFromApi ? BANK_BY_ID[String(bankIdFromApi)] : null) ||
         null; // unknown bank → will show generic icon
@@ -194,7 +193,6 @@ export default function CashbookPage() {
         balance: formatRs(openingBalance),
       };
     };
-
 
     (async () => {
       try {

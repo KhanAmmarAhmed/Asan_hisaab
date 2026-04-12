@@ -38,6 +38,18 @@ const parseMaybeDoubleJson = (raw) => {
   return JSON.parse(trimmed);
 };
 
+const normalizeAuthPayload = (payload) => {
+  if (!payload || typeof payload !== "object") return payload;
+  const inner =
+    payload?.data && typeof payload.data === "object" ? payload.data : null;
+  if (!inner) return payload;
+  return {
+    ...payload,
+    ...inner,
+    data: payload.data,
+  };
+};
+
 // LOGIN
 export const loginUser = async (data) => {
   const payload = new FormData();
@@ -48,7 +60,7 @@ export const loginUser = async (data) => {
     _skipLogoutOn401: true,
     _skipAuth: true,
   });
-  return res.data;
+  return normalizeAuthPayload(res.data);
 };
 
 // SEND OTP — uses responseType:"text" because the server may return
@@ -82,7 +94,7 @@ export const signupUser = async (data) => {
     _skipAuth: true,
   });
 
-  return res.data;
+  return normalizeAuthPayload(res.data);
 };
 
 // VERIFY OTP AND SIGNUP (Two-step signup)
@@ -102,5 +114,5 @@ export const verifyOtpAndSignup = async (data) => {
     _skipAuth: true,
   });
 
-  return res.data;
+  return normalizeAuthPayload(res.data);
 };

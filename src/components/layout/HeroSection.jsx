@@ -28,10 +28,6 @@ const tabs = [
 ];
 
 const CREATE_ROUTES = ["/projects", "/customers", "/vendors", "/employees"];
-const handleLogout = () => {
-  localStorage.removeItem("token");
-  window.location.href = "/login";
-};
 
 export default function HeroSection() {
   // const { activeTab, setActiveTab } = useTab();
@@ -433,7 +429,13 @@ export default function HeroSection() {
         >
           Switch Account
         </MenuItem>
-        <MenuItem sx={{ fontWeight: 600, color: "#f44336" }} onClick={logout}>
+        <MenuItem
+          sx={{ fontWeight: 600, color: "#f44336" }}
+          onClick={() => {
+            console.log("🔐 Logout clicked");
+            logout();
+          }}
+        >
           Logout
         </MenuItem>
       </Menu>

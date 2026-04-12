@@ -1,4 +1,4 @@
-import { useState, useContext, useMemo } from "react";
+import { useState, useContext, useMemo, useEffect } from "react";
 import Box from "@mui/material/Box";
 import { Button, Typography } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -11,6 +11,8 @@ import GenericDateField from "@/components/generic/GenericDateField";
 import { useTheme, useMediaQuery, Collapse } from "@mui/material";
 import { DataContext } from "@/context/DataContext";
 import { addEmployeeApi } from "@/services/employeeApi";
+import { fetchDepartmentsApi } from "@/services/departmentApi";
+import { fetchDesignationsApi } from "@/services/designationApi";
 
 const tableColumns = [
   { id: "employeeName", label: "Employee Name", width: "25%" },
@@ -25,6 +27,9 @@ export default function EmployeesPage() {
   const { employees, addEmployee } = useContext(DataContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState("");
 
   // Draft values (edited in UI)
   const [searchNameDraft, setSearchNameDraft] = useState("");
@@ -47,6 +52,70 @@ export default function EmployeesPage() {
       label: v,
       value: v,
     }));
+
+  // Create a map from department names to IDs for filtering
+  const departmentMap = useMemo(() => {
+    const map = {};
+    (departments || []).forEach((dept) => {
+      const name = dept?.department_name || "";
+      if (name) {
+        map[name] = dept?.department_id || dept?.id;
+      }
+    });
+    return map;
+  }, [departments]);
+
+  const departmentOptions = useMemo(() => {
+    const names = (departments || [])
+      .map((dept) => dept?.department_name || "")
+      .filter(Boolean);
+    return makeOptions(names).sort((a, b) => a.label.localeCompare(b.label));
+  }, [departments]);
+
+  // Filter designations based on selected department
+  const filteredDesignations = useMemo(() => {
+    if (!selectedDepartment) return designations;
+
+    const selectedDeptId = departmentMap[selectedDepartment];
+    if (!selectedDeptId) return [];
+
+    return (designations || []).filter((des) => {
+      const desDeptId = des?.department_id || des?.dept_id || des?.departmentId;
+      return desDeptId == selectedDeptId; // Use loose equality to handle string/number comparison
+    });
+  }, [designations, selectedDepartment, departmentMap]);
+
+  const designationOptions = useMemo(() => {
+    const names = filteredDesignations
+      .map((item) => item?.designation_name || "")
+      .filter(Boolean);
+    return makeOptions(names).sort((a, b) => a.label.localeCompare(b.label));
+  }, [filteredDesignations]);
+
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        const data = await fetchDepartmentsApi();
+        setDepartments(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.warn("Failed to load departments:", error);
+        setDepartments([]);
+      }
+    };
+
+    const loadDesignations = async () => {
+      try {
+        const data = await fetchDesignationsApi();
+        setDesignations(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.warn("Failed to load designations:", error);
+        setDesignations([]);
+      }
+    };
+
+    loadDepartments();
+    loadDesignations();
+  }, []);
 
   const filteredData = useMemo(() => {
     const searchNameNorm = String(searchName || "")
@@ -105,10 +174,30 @@ export default function EmployeesPage() {
 
       addEmployee(newEntry);
       setIsModalOpen(false);
+      setSelectedDepartment(""); // Reset on successful creation
     } catch (err) {
       setApiError(err.message || "Failed to create employee");
     } finally {
       setApiLoading(false);
+    }
+  };
+
+  // Custom change handler to manage department and designation updates
+  const handleModalChange = (fieldId, value, setFormData, formData) => {
+    if (fieldId === "department") {
+      // When department changes, update selected department and clear designation
+      setSelectedDepartment(value);
+      setFormData((prev) => ({
+        ...prev,
+        [fieldId]: value,
+        designation: "", // Clear designation when department changes
+      }));
+    } else {
+      // For other fields, just update normally
+      setFormData((prev) => ({
+        ...prev,
+        [fieldId]: value,
+      }));
     }
   };
 
@@ -203,18 +292,36 @@ export default function EmployeesPage() {
 
       <GenericModal
         open={isModalOpen}
-        onOpenChange={setIsModalOpen}
+        onOpenChange={(isOpen) => {
+          setIsModalOpen(isOpen);
+          if (!isOpen) {
+            setSelectedDepartment(""); // Reset when modal closes
+          }
+        }}
         title="Create Employee"
         mode="add"
         columns={2}
         onSubmit={handleCreateEmployee}
+        onCustomChange={handleModalChange}
         fields={[
           { id: "employeeName", label: "Employee Name" },
           { id: "phone", label: "Phone Number" },
           { id: "email", label: "Email" },
           { id: "address", label: "Address" },
-          { id: "department", label: "Department" },
-          { id: "designation", label: "Designation" },
+          {
+            id: "department",
+            label: "Department",
+            type: "select",
+            placeholder: "Select department",
+            options: departmentOptions,
+          },
+          {
+            id: "designation",
+            label: "Designation",
+            type: "select",
+            placeholder: "Select designation",
+            options: designationOptions,
+          },
         ]}
         loading={apiLoading}
         error={apiError}

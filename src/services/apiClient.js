@@ -71,7 +71,10 @@ const applyCorsProxy = (config) => {
   const corsProxyTemplate = getCorsProxyTemplate();
   if (!corsProxyUrl && !corsProxyTemplate) return config;
 
-  const absoluteUrl = toAbsoluteUrl({ baseURL: config.baseURL, url: config.url });
+  const absoluteUrl = toAbsoluteUrl({
+    baseURL: config.baseURL,
+    url: config.url,
+  });
 
   let proxiedUrl;
   if (corsProxyTemplate) {
@@ -95,10 +98,7 @@ const normalizeAxiosError = (error) => {
   const data = error?.response?.data ?? null;
 
   const messageFromServer =
-    (typeof data === "string" && data) ||
-    data?.message ||
-    data?.error ||
-    null;
+    (typeof data === "string" && data) || data?.message || data?.error || null;
 
   const message =
     messageFromServer ||
@@ -127,7 +127,12 @@ const refreshAccessToken = async () => {
   const refreshToken = getRefreshToken();
   const refreshPath = getRefreshPath();
 
+  console.log("🔄 Token Refresh Attempt:");
+  console.log("  - Refresh Token Present:", !!refreshToken);
+  console.log("  - Refresh Path:", refreshPath);
+
   if (!refreshToken || !refreshPath) {
+    console.error("❌ Cannot refresh - missing token or path");
     throw new ApiError("Refresh token not available", { status: 401 });
   }
 
@@ -136,6 +141,12 @@ const refreshAccessToken = async () => {
     client_id: getClientId(),
     secret_key: getSecretKey(),
   };
+
+  console.log("📋 Refresh Payload:", {
+    refresh_token: !!payload.refresh_token ? "✓" : "✗",
+    client_id: payload.client_id || "✗ MISSING",
+    secret_key: payload.secret_key || "✗ MISSING",
+  });
 
   const config = applyCorsProxy({
     url: refreshPath,
@@ -148,14 +159,18 @@ const refreshAccessToken = async () => {
 
   // Accept a few common response shapes.
   const data = res?.data ?? {};
-  const nextToken = data?.token ?? data?.accessToken ?? data?.access_token ?? null;
+  const nextToken =
+    data?.token ?? data?.accessToken ?? data?.access_token ?? null;
 
   if (!nextToken) {
+    console.error("❌ Refresh succeeded but no token in response:", data);
     throw new ApiError("Refresh succeeded but no token returned", {
       status: res?.status ?? null,
       data,
     });
   }
+
+  console.log("✅ Token refreshed successfully");
 
   // Update storage. If backend returns refresh token too, persist it.
   setAuthData(data);
@@ -172,6 +187,9 @@ apiClient.interceptors.request.use((config) => {
   if (!skipAuth && token && !next?.headers?.Authorization) {
     next.headers = next.headers || {};
     next.headers.Authorization = `Bearer ${token}`;
+    console.log("📤 Token attached to request:", next.url);
+  } else if (!skipAuth && !token) {
+    console.warn("⚠️ No token available for request:", next.url);
   }
 
   return next;

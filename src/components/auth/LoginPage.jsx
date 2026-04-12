@@ -44,8 +44,21 @@ const LoginPage = () => {
     setLoading(true);
     try {
       const res = await loginUser({ ...form, email });
-      const status = String(res?.status || "").toLowerCase();
-      if (status === "success") {
+      console.log("🔍 Login Response:", res);
+      console.log(
+        "📦 Token:",
+        res?.token || res?.accessToken || res?.access_token,
+      );
+      console.log("🔑 Client ID:", res?.client_id);
+      console.log("🔐 Secret Key:", res?.secret_key);
+      const statusValue =
+        res?.status ?? res?.success ?? res?.data?.status ?? res?.data?.success;
+      const isSuccess =
+        statusValue === true ||
+        String(statusValue || "")
+          .toLowerCase()
+          .trim() === "success";
+      if (isSuccess) {
         login({ ...res, email });
         navigate("/dashboard");
       } else {
