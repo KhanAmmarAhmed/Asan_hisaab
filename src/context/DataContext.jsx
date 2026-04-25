@@ -476,20 +476,27 @@ import { useAuth } from "./AuthContext";
 import { fetchCustomersApi } from "../services/customerApi";
 import { fetchEmployeesApi } from "../services/employeeApi";
 import { fetchVendorsApi } from "../services/vendorApi";
-import { 
-  fetchProjectsApi, 
-  addProjectApi, 
-  updateProjectApi 
+import { mapEmployeeToRow } from "../utils/employeeUtils";
+import {
+  fetchProjectsApi,
+  addProjectApi,
+  updateProjectApi,
 } from "../services/projectApi";
-import { 
-  fetchInvoicesApi, 
-  addInvoiceApi, 
-  updateInvoiceApi 
+import {
+  fetchInvoicesApi,
+  addInvoiceApi,
+  updateInvoiceApi,
+  fetchReceivableInvoicesApi,
+  fetchPayableInvoicesApi,
+  fetchAllInvoicesApi,
+  fetchAllInvoicesFromBackend,
+  fetchInvoiceByIdApi,
 } from "../services/invoiceApi";
-import { 
+import { transformInvoicesFromAPI } from "../utils/invoiceTransformer";
+import {
   fetchTransactionsApi,
   addIncomeTransactionApi,
-  addExpenseTransactionApi 
+  addExpenseTransactionApi,
 } from "../services/transactionApi";
 
 export const DataContext = createContext();
@@ -506,9 +513,8 @@ const toDate = (value) => {
   if (value instanceof Date) return isNaN(value) ? null : value;
   const raw = String(value).trim();
   if (!raw) return null;
-  const normalized = raw.includes(" ") && !raw.includes("T")
-    ? raw.replace(" ", "T")
-    : raw;
+  const normalized =
+    raw.includes(" ") && !raw.includes("T") ? raw.replace(" ", "T") : raw;
   const parsed = new Date(normalized);
   return isNaN(parsed) ? null : parsed;
 };
@@ -572,11 +578,7 @@ const normalizeTransaction = (item, fallbackEntityType) => {
     amount: resolveTransactionAmount(item),
     date: normalizedDate,
     createdAt:
-      item?.createdAt ??
-      item?.created_at ??
-      normalizedDate ??
-      item?.date ??
-      "",
+      item?.createdAt ?? item?.created_at ?? normalizedDate ?? item?.date ?? "",
     entityType: item?.entity ?? item?.entityType ?? fallbackEntityType,
   };
 };
@@ -616,8 +618,10 @@ export const DataProvider = ({ children }) => {
   // Projects are API-backed
   const [projects, setProjects] = useState([]);
 
-  // Employees are API-backed 
+  // Employees are API-backed
   const [employees, setEmployees] = useState([]);
+  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [employeesError, setEmployeesError] = useState("");
 
   // Invoices are API-backed
   const [invoices, setInvoices] = useState([]);
@@ -634,6 +638,8 @@ export const DataProvider = ({ children }) => {
       setCustomers([]);
       setVendors([]);
       setEmployees([]);
+      setEmployeesLoading(false);
+      setEmployeesError("");
       setProjects([]);
       setInvoices([]);
       setIncome([]);
@@ -678,26 +684,27 @@ export const DataProvider = ({ children }) => {
     if (!isAuthenticated) return;
     let isMounted = true;
 
-    const mapEmployee = (e) => ({
-      id: e?.id ?? e?.employee_id ?? e?.employeeId ?? undefined,
-      employeeName: e?.name ?? e?.employeeName ?? "",
-      phone: e?.number ?? e?.phone ?? "",
-      email: e?.email ?? "",
-      address: e?.address ?? e?.Address ?? "",
-      department: e?.department ?? "",
-      designation: e?.designation ?? "",
-      date: String(e?.created_at ?? e?.date ?? e?.createdAt ?? "").split(
-        " ",
-      )[0],
-    });
-
     (async () => {
+      if (isMounted) {
+        setEmployeesLoading(true);
+        setEmployeesError("");
+      }
+
       try {
         const list = await fetchEmployeesApi();
         if (!isMounted) return;
-        setEmployees(Array.isArray(list) ? list.map(mapEmployee) : []);
+
+        setEmployees(Array.isArray(list) ? list.map(mapEmployeeToRow) : []);
       } catch (err) {
+        if (!isMounted) return;
+
+        setEmployees([]);
+        setEmployeesError(err?.message || "Failed to fetch employees.");
         console.warn("Failed to fetch employees:", err);
+      } finally {
+        if (isMounted) {
+          setEmployeesLoading(false);
+        }
       }
     })();
 
@@ -745,28 +752,40 @@ export const DataProvider = ({ children }) => {
       try {
         const list = await fetchProjectsApi();
         if (!isMounted) return;
-        setProjects(Array.isArray(list) && list.length > 0 ? list : DEFAULT_PROJECTS);
+        setProjects(
+          Array.isArray(list) && list.length > 0 ? list : DEFAULT_PROJECTS,
+        );
       } catch (err) {
         console.warn("Failed to fetch projects:", err);
       }
     })();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [isAuthenticated]);
 
-  // Fetch invoices from API — only when authenticated
+  // Fetch invoices from backend API — only when authenticated
   useEffect(() => {
     if (!isAuthenticated) return;
     let isMounted = true;
     (async () => {
       try {
-        const list = await fetchInvoicesApi();
+        console.log("📥 Loading invoices from backend...");
+        const list = await fetchAllInvoicesFromBackend();
         if (!isMounted) return;
-        setInvoices(Array.isArray(list) ? list : []);
+        
+        // Transform the API response to handle nested structure
+        const transformedList = transformInvoicesFromAPI(list);
+        console.log(`✅ Loaded and transformed ${transformedList.length} invoices from backend`);
+        setInvoices(Array.isArray(transformedList) ? transformedList : []);
       } catch (err) {
         console.warn("Failed to fetch invoices:", err);
+        setInvoices([]);
       }
     })();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [isAuthenticated]);
 
   // Fetch income transactions from API — only when authenticated
@@ -782,7 +801,9 @@ export const DataProvider = ({ children }) => {
         console.warn("Failed to fetch income:", err);
       }
     })();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [isAuthenticated]);
 
   // Fetch expense transactions from API — only when authenticated
@@ -798,13 +819,23 @@ export const DataProvider = ({ children }) => {
         console.warn("Failed to fetch expenses:", err);
       }
     })();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [isAuthenticated]);
 
   // --- Helper Actions ---
   const addCustomer = (customer) => setCustomers((prev) => [customer, ...prev]);
+  const updateCustomer = (updatedCustomer) =>
+    setCustomers((prev) =>
+      prev.map((c) => (c.id === updatedCustomer.id ? updatedCustomer : c)),
+    );
 
   const addVendor = (vendor) => setVendors((prev) => [vendor, ...prev]);
+  const updateVendor = (updatedVendor) =>
+    setVendors((prev) =>
+      prev.map((v) => (v.id === updatedVendor.id ? updatedVendor : v)),
+    );
 
   const addProject = async (project) => {
     try {
@@ -819,8 +850,13 @@ export const DataProvider = ({ children }) => {
     try {
       const pid = projects[index]?.id;
       if (!pid) return;
-      const savedProject = await updateProjectApi({ ...updatedProject, id: pid });
-      setProjects((prev) => prev.map((p, i) => (i === index ? savedProject : p)));
+      const savedProject = await updateProjectApi({
+        ...updatedProject,
+        id: pid,
+      });
+      setProjects((prev) =>
+        prev.map((p, i) => (i === index ? savedProject : p)),
+      );
     } catch (err) {
       console.error("Failed to update project:", err);
     }
@@ -828,13 +864,20 @@ export const DataProvider = ({ children }) => {
 
   const addEmployee = (employee) => setEmployees((prev) => [employee, ...prev]);
 
-  const addInvoice = async (invoice) => {
-    try {
-      const savedInvoice = await addInvoiceApi(invoice);
-      setInvoices((prev) => [savedInvoice, ...prev]);
-    } catch (err) {
-      console.error("Failed to add invoice:", err);
-    }
+  const updateEmployee = (updatedEmployee) =>
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.id === updatedEmployee.id ? updatedEmployee : emp,
+      ),
+    );
+
+  const deleteEmployee = (employeeId) =>
+    setEmployees((prev) => prev.filter((emp) => emp.id !== employeeId));
+
+  const addInvoice = (invoice) => {
+    // Invoice is already saved to backend via save_order.php
+    // Just update the local state for immediate UI update
+    setInvoices((prev) => [invoice, ...prev]);
   };
 
   const updateInvoice = async (index, updated) => {
@@ -842,7 +885,9 @@ export const DataProvider = ({ children }) => {
       const iid = invoices[index]?.id;
       if (!iid) return;
       const savedInvoice = await updateInvoiceApi({ ...updated, id: iid });
-      setInvoices((prev) => prev.map((inv, i) => (i === index ? savedInvoice : inv)));
+      setInvoices((prev) =>
+        prev.map((inv, i) => (i === index ? savedInvoice : inv)),
+      );
     } catch (err) {
       console.error("Failed to update invoice:", err);
     }
@@ -856,7 +901,7 @@ export const DataProvider = ({ children }) => {
         ...prev,
       ]);
     } catch (err) {
-       console.error("Failed to add income:", err);
+      console.error("Failed to add income:", err);
     }
   };
 
@@ -877,7 +922,7 @@ export const DataProvider = ({ children }) => {
         ...prev,
       ]);
     } catch (err) {
-       console.error("Failed to add expense:", err);
+      console.error("Failed to add expense:", err);
     }
   };
 
@@ -1127,16 +1172,26 @@ export const DataProvider = ({ children }) => {
       value={{
         customers,
         addCustomer,
+        updateCustomer,
         vendors,
         addVendor,
+        updateVendor,
         projects,
         addProject,
         updateProject,
         employees,
+        employeesLoading,
+        employeesError,
         addEmployee,
+        updateEmployee,
+        deleteEmployee,
         invoices,
         addInvoice,
         updateInvoice,
+        fetchReceivableInvoicesApi,
+        fetchPayableInvoicesApi,
+        fetchAllInvoicesApi,
+        fetchInvoiceByIdApi,
         income,
         addIncome,
         updateIncome,

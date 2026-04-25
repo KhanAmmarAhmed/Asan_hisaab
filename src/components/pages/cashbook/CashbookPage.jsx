@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
+import { useLocation } from "react-router-dom";
 // import React, { useState, useEffect } from "react";
 import { Edit, Plus } from "lucide-react";
 import GenericModal from "@/components/generic/GenericModal";
@@ -138,6 +139,7 @@ export default function CashbookPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditingCompany, setIsEditingCompany] = useState(false);
   const { companyInfo, setCompanyInfo } = useContext(CompanyContext);
+  const location = useLocation();
   const [apiLoading, setApiLoading] = useState(false);
   const [apiError, setApiError] = useState("");
 
@@ -208,6 +210,14 @@ export default function CashbookPage() {
       isMounted = false;
     };
   }, []);
+
+  // Cleanup modal and state when navigating away or component unmounts
+  useEffect(() => {
+    return () => {
+      setIsModalOpen(false);
+      setIsEditingCompany(false);
+    };
+  }, [location.pathname]); // Re-run cleanup when route changes
 
   // Helper: resolve bank details from a label/name string (case-insensitive)
   const getBankDetails = (bankLabel) => {

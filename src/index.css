@@ -66,7 +66,38 @@ body.print-ledger .ledger-print-only {
     display: none !important;
   }
 
+  /* Hide all page chrome when printing a detail modal */
+  body.print-detail-modal > *:not(.MuiModal-root):not(#root) {
+    display: none !important;
+  }
+
+  body.print-detail-modal #root > *:not(.MuiModal-root) {
+    display: none !important;
+  }
+
+  /* Hide the backdrop and action buttons, show only the paper */
+  body.print-detail-modal .MuiBackdrop-root,
   body.print-detail-modal .modal-action-buttons {
+    display: none !important;
+  }
+
+  /* Make the dialog paper fill the whole page */
+  body.print-detail-modal [role="dialog"] {
+    position: static !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  body.print-detail-modal .MuiDialog-container {
+    display: block !important;
+    height: auto !important;
+  }
+
+  /* Hide the dialog close button when printing */
+  body.print-detail-modal [role="dialog"] .MuiIconButton-root:first-of-type {
     display: none !important;
   }
 }

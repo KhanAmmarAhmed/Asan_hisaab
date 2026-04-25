@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import Box from "@mui/material/Box";
 import {
   Button,
@@ -25,6 +25,13 @@ const ProjectsPage = () => {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  // Close modal when component unmounts (user navigates away)
+  useEffect(() => {
+    return () => {
+      setIsModalOpen(false);
+    };
+  }, []);
 
   const handleCreateOrEditProject = (formData) => {
     const name = formData.projectName?.trim();

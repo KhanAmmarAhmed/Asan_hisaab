@@ -127,9 +127,9 @@ const refreshAccessToken = async () => {
   const refreshToken = getRefreshToken();
   const refreshPath = getRefreshPath();
 
-  console.log("🔄 Token Refresh Attempt:");
-  console.log("  - Refresh Token Present:", !!refreshToken);
-  console.log("  - Refresh Path:", refreshPath);
+  // console.log("🔄 Token Refresh Attempt:");
+  // console.log("  - Refresh Token Present:", !!refreshToken);
+  // console.log("  - Refresh Path:", refreshPath);
 
   if (!refreshToken || !refreshPath) {
     console.error("❌ Cannot refresh - missing token or path");
@@ -142,11 +142,11 @@ const refreshAccessToken = async () => {
     secret_key: getSecretKey(),
   };
 
-  console.log("📋 Refresh Payload:", {
-    refresh_token: !!payload.refresh_token ? "✓" : "✗",
-    client_id: payload.client_id || "✗ MISSING",
-    secret_key: payload.secret_key || "✗ MISSING",
-  });
+  // console.log("📋 Refresh Payload:", {
+  //   refresh_token: !!payload.refresh_token ? "✓" : "✗",
+  //   client_id: payload.client_id || "✗ MISSING",
+  //   secret_key: payload.secret_key || "✗ MISSING",
+  // });
 
   const config = applyCorsProxy({
     url: refreshPath,
@@ -169,8 +169,6 @@ const refreshAccessToken = async () => {
       data,
     });
   }
-
-  console.log("✅ Token refreshed successfully");
 
   // Update storage. If backend returns refresh token too, persist it.
   setAuthData(data);

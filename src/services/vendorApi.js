@@ -79,3 +79,19 @@ export const fetchVendorsApi = async () => {
 
   return normalizeListPayload(listPayload);
 };
+
+export const updateVendorApi = async (vendorData) => {
+  const formData = new FormData();
+  formData.append("action", "edit");
+  appendIfPresent(formData, "name", vendorData?.venderName);
+  appendIfPresent(formData, "number", vendorData?.phone);
+  appendIfPresent(formData, "email", vendorData?.email);
+  appendIfPresent(formData, "address", vendorData?.address);
+  appendIfPresent(formData, "vendor_id", vendorData?.id);
+
+  const res = await apiClient.post("/vendor_api.php", formData);
+  const payload = res?.data ?? {};
+
+  assertApiSuccess(payload, "Failed to update vendor");
+  return payload?.data ?? payload;
+};

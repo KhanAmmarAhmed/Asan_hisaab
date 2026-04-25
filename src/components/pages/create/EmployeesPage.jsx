@@ -1,130 +1,136 @@
-import { useState, useContext, useMemo, useEffect } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
-import { Button, Typography } from "@mui/material";
+import {
+  Alert,
+  Button,
+  CircularProgress,
+  Collapse,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import { Add, FilterList } from "@mui/icons-material";
+import { Add, Delete, Edit, FilterList } from "@mui/icons-material";
 import GenericTable from "@/components/generic/GenericTable";
-import GenericModal from "@/components/generic/GenericModal";
+import FormModal from "@/components/generic/FormModal";
 import GenericSelectField from "@/components/generic/GenericSelectField";
 import GenericDateField from "@/components/generic/GenericDateField";
-import { useTheme, useMediaQuery, Collapse } from "@mui/material";
 import { DataContext } from "@/context/DataContext";
-import { addEmployeeApi } from "@/services/employeeApi";
+import {
+  addEmployeeApi,
+  deleteEmployeeApi,
+  updateEmployeeApi,
+} from "@/services/employeeApi";
 import { fetchDepartmentsApi } from "@/services/departmentApi";
 import { fetchDesignationsApi } from "@/services/designationApi";
+import { mapEmployeeToRow } from "@/utils/employeeUtils";
 
-const tableColumns = [
-  { id: "employeeName", label: "Employee Name", width: "25%" },
-  { id: "phone", label: "Phone Number", width: "12%" },
-  { id: "email", label: "Email", width: "25%" },
-  { id: "address", label: "Address", width: "30%" },
-  { id: "department", label: "Department", width: "21%" },
-  { id: "designation", label: "Designation", width: "21%" },
-];
+const makeOptions = (values) =>
+  Array.from(new Set(values.filter(Boolean))).map((value) => ({
+    label: value,
+    value,
+  }));
 
-export default function EmployeesPage() {
-  const { employees, addEmployee } = useContext(DataContext);
+const EmployeesPage = () => {
+  const {
+    employees,
+    employeesLoading,
+    employeesError,
+    addEmployee,
+    updateEmployee,
+    deleteEmployee,
+  } = useContext(DataContext);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [designations, setDesignations] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
-
-  // Draft values (edited in UI)
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(null);
   const [searchNameDraft, setSearchNameDraft] = useState("");
   const [searchEmailDraft, setSearchEmailDraft] = useState("");
   const [searchDateDraft, setSearchDateDraft] = useState("");
-
-  // Applied values (used to filter table)
   const [searchName, setSearchName] = useState("");
   const [searchEmail, setSearchEmail] = useState("");
   const [searchDate, setSearchDate] = useState("");
-
   const [apiLoading, setApiLoading] = useState(false);
   const [apiError, setApiError] = useState("");
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // Helper to create options in the shape { label, value }
-  const makeOptions = (arr) =>
-    Array.from(new Set(arr.filter(Boolean))).map((v) => ({
-      label: v,
-      value: v,
-    }));
-
-  // Create a map from department names to IDs for filtering
-  const departmentMap = useMemo(() => {
-    const map = {};
-    (departments || []).forEach((dept) => {
-      const name = dept?.department_name || "";
-      if (name) {
-        map[name] = dept?.department_id || dept?.id;
-      }
-    });
-    return map;
-  }, [departments]);
-
   const departmentOptions = useMemo(() => {
-    const names = (departments || [])
-      .map((dept) => dept?.department_name || "")
-      .filter(Boolean);
-    return makeOptions(names).sort((a, b) => a.label.localeCompare(b.label));
+    return departments
+      .filter((department) => department?.department_name)
+      .map((department) => ({
+        label: department.department_name,
+        value: department.id,
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label));
   }, [departments]);
 
-  // Filter designations based on selected department
   const filteredDesignations = useMemo(() => {
     if (!selectedDepartment) return designations;
 
-    const selectedDeptId = departmentMap[selectedDepartment];
-    if (!selectedDeptId) return [];
+    return designations.filter((designation) => {
+      const designationDepartmentId =
+        designation?.department_id ||
+        designation?.dept_id ||
+        designation?.departmentId;
 
-    return (designations || []).filter((des) => {
-      const desDeptId = des?.department_id || des?.dept_id || des?.departmentId;
-      return desDeptId == selectedDeptId; // Use loose equality to handle string/number comparison
+      return String(designationDepartmentId) === String(selectedDepartment);
     });
-  }, [designations, selectedDepartment, departmentMap]);
+  }, [designations, selectedDepartment]);
 
   const designationOptions = useMemo(() => {
-    const names = filteredDesignations
-      .map((item) => item?.designation_name || "")
-      .filter(Boolean);
-    return makeOptions(names).sort((a, b) => a.label.localeCompare(b.label));
+    return filteredDesignations
+      .filter((designation) => designation?.designation_name)
+      .map((designation) => ({
+        label: designation.designation_name,
+        value: designation.id,
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label));
   }, [filteredDesignations]);
 
   useEffect(() => {
-    const loadDepartments = async () => {
+    const loadDependencies = async () => {
       try {
-        const data = await fetchDepartmentsApi();
-        setDepartments(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.warn("Failed to load departments:", error);
-        setDepartments([]);
-      }
-    };
+        const [departmentList, designationList] = await Promise.all([
+          fetchDepartmentsApi(),
+          fetchDesignationsApi(),
+        ]);
 
-    const loadDesignations = async () => {
-      try {
-        const data = await fetchDesignationsApi();
-        setDesignations(Array.isArray(data) ? data : []);
+        setDepartments(Array.isArray(departmentList) ? departmentList : []);
+        setDesignations(Array.isArray(designationList) ? designationList : []);
       } catch (error) {
-        console.warn("Failed to load designations:", error);
+        console.warn("Failed to load employee form dependencies:", error);
+        setDepartments([]);
         setDesignations([]);
       }
     };
 
-    loadDepartments();
-    loadDesignations();
+    loadDependencies();
   }, []);
 
-  const filteredData = useMemo(() => {
-    const searchNameNorm = String(searchName || "")
+  useEffect(() => {
+    return () => {
+      setIsModalOpen(false);
+      setIsEditModalOpen(false);
+      setApiError("");
+    };
+  }, []);
+
+  const filteredEmployees = useMemo(() => {
+    const normalizedName = String(searchName || "")
       .toLowerCase()
       .trim();
-    const searchEmailNorm = String(searchEmail || "")
+    const normalizedEmail = String(searchEmail || "")
       .toLowerCase()
       .trim();
-    const searchDateNorm =
+    const normalizedDate =
       (String(searchDate || "").match(/\d{4}-\d{2}-\d{2}/) || [])[0] || "";
 
     return employees.filter((employee) => {
@@ -132,13 +138,11 @@ export default function EmployeesPage() {
         (String(employee.date || "").match(/\d{4}-\d{2}-\d{2}/) || [])[0] || "";
 
       return (
-        (searchNameNorm === "" ||
-          (employee.employeeName || "")
-            .toLowerCase()
-            .includes(searchNameNorm)) &&
-        (searchEmailNorm === "" ||
-          (employee.email || "").toLowerCase().includes(searchEmailNorm)) &&
-        (searchDateNorm === "" || employeeDate === searchDateNorm)
+        (!normalizedName ||
+          employee.employeeName.toLowerCase().includes(normalizedName)) &&
+        (!normalizedEmail ||
+          employee.email.toLowerCase().includes(normalizedEmail)) &&
+        (!normalizedDate || employeeDate === normalizedDate)
       );
     });
   }, [employees, searchName, searchEmail, searchDate]);
@@ -149,89 +153,234 @@ export default function EmployeesPage() {
     setSearchDate(searchDateDraft);
   };
 
+  const buildEmployeeFallback = ({
+    employeeId,
+    formData,
+    departmentId,
+    designationId,
+    departmentName,
+    designationName,
+    createdAt,
+  }) => ({
+    id: employeeId,
+    employeeName: formData.employeeName,
+    phone: formData.phone,
+    email: formData.email,
+    address: formData.address,
+    department: departmentName,
+    designation: designationName,
+    department_id: departmentId,
+    designation_id: designationId,
+    created_at: createdAt,
+  });
+
   const handleCreateEmployee = async (formData) => {
     setApiLoading(true);
     setApiError("");
+
     try {
-      const response = await addEmployeeApi(formData);
-      const created = Array.isArray(response) ? response[0] : response;
+      if (!formData.department) throw new Error("Department is required");
+      if (!formData.designation) throw new Error("Designation is required");
 
-      const newEntry = {
-        employeeName:
-          created?.employeeName || created?.name || formData.employeeName || "",
-        phone: created?.phone || created?.number || formData.phone || "",
-        email: created?.email || formData.email || "",
-        address: created?.address || created?.Address || formData.address || "",
-        department: created?.department || formData.department || "",
-        designation: created?.designation || formData.designation || "",
-        date: String(
-          created?.created_at || created?.date || new Date().toISOString(),
-        )
-          .split("T")[0]
-          .split(" ")[0],
-        id: created?.id ?? created?.employee_id ?? created?.employeeId,
-      };
+      const departmentId = formData.department;
+      const designationId = formData.designation;
+      const departmentRecord = departments.find((item) => item.id == departmentId);
+      const designationRecord = designations.find(
+        (item) => item.id == designationId,
+      );
 
-      addEmployee(newEntry);
+      const response = await addEmployeeApi({
+        employeeName: formData.employeeName,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        department_id: departmentId,
+        designation_id: designationId,
+      });
+
+      const employeeRow = mapEmployeeToRow(
+        response,
+        buildEmployeeFallback({
+          employeeId: response?.id,
+          formData,
+          departmentId,
+          designationId,
+          departmentName: departmentRecord?.department_name || "",
+          designationName: designationRecord?.designation_name || "",
+          createdAt: response?.created_at || new Date().toISOString(),
+        }),
+      );
+
+      addEmployee(employeeRow);
       setIsModalOpen(false);
-      setSelectedDepartment(""); // Reset on successful creation
-    } catch (err) {
-      setApiError(err.message || "Failed to create employee");
+      setSelectedDepartment("");
+    } catch (error) {
+      setApiError(error.message || "Failed to create employee");
     } finally {
       setApiLoading(false);
     }
   };
 
-  // Custom change handler to manage department and designation updates
-  const handleModalChange = (fieldId, value, setFormData, formData) => {
-    if (fieldId === "department") {
-      // When department changes, update selected department and clear designation
-      setSelectedDepartment(value);
-      setFormData((prev) => ({
-        ...prev,
-        [fieldId]: value,
-        designation: "", // Clear designation when department changes
-      }));
-    } else {
-      // For other fields, just update normally
-      setFormData((prev) => ({
-        ...prev,
-        [fieldId]: value,
-      }));
+  const handleOpenEditModal = (employee) => {
+    setEditingEmployee(employee);
+    setSelectedDepartment(employee?.department_id || "");
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateEmployee = async (formData) => {
+    setApiLoading(true);
+    setApiError("");
+
+    try {
+      if (!formData.department) throw new Error("Department is required");
+      if (!formData.designation) throw new Error("Designation is required");
+
+      const departmentId = formData.department;
+      const designationId = formData.designation;
+      const departmentRecord = departments.find((item) => item.id == departmentId);
+      const designationRecord = designations.find(
+        (item) => item.id == designationId,
+      );
+
+      const response = await updateEmployeeApi({
+        id: editingEmployee?.id,
+        employeeName: formData.employeeName,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        department_id: departmentId,
+        designation_id: designationId,
+      });
+
+      const employeeRow = mapEmployeeToRow(
+        response,
+        buildEmployeeFallback({
+          employeeId: response?.id || editingEmployee?.id,
+          formData,
+          departmentId,
+          designationId,
+          departmentName: departmentRecord?.department_name || "",
+          designationName: designationRecord?.designation_name || "",
+          createdAt: editingEmployee?.date,
+        }),
+      );
+
+      updateEmployee(employeeRow);
+      setIsEditModalOpen(false);
+      setEditingEmployee(null);
+      setSelectedDepartment("");
+    } catch (error) {
+      setApiError(error.message || "Failed to update employee");
+    } finally {
+      setApiLoading(false);
     }
   };
+
+  const handleDeleteEmployee = async (employeeId) => {
+    if (!window.confirm("Are you sure you want to delete this employee?")) {
+      return;
+    }
+
+    setDeleteLoading(employeeId);
+    setApiError("");
+
+    try {
+      await deleteEmployeeApi(employeeId);
+      deleteEmployee(employeeId);
+    } catch (error) {
+      setApiError(error.message || "Failed to delete employee");
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
+  const handleModalChange = (fieldId, value, setFormData) => {
+    if (fieldId === "department") {
+      setSelectedDepartment(value);
+      setFormData((previousValue) => ({
+        ...previousValue,
+        department: value,
+        designation: "",
+      }));
+      return;
+    }
+
+    setFormData((previousValue) => ({
+      ...previousValue,
+      [fieldId]: value,
+    }));
+  };
+
+  const tableColumns = [
+    { id: "employeeName", label: "Name", width: "15%" },
+    { id: "email", label: "Email", width: "18%" },
+    { id: "phone", label: "Phone", width: "12%" },
+    { id: "address", label: "Address", width: "15%" },
+    { id: "department", label: "Department", width: "12%" },
+    { id: "designation", label: "Designation", width: "12%" },
+    { id: "date", label: "Created At", width: "12%" },
+    {
+      id: "action",
+      label: "Action",
+      width: "8%",
+      sortable: false,
+      render: (employee) => (
+        <Box display="flex" gap={1}>
+          <Button
+            size="small"
+            variant="outlined"
+            color="primary"
+            onClick={() => handleOpenEditModal(employee)}
+            disabled={deleteLoading === employee.id || apiLoading}
+            sx={{ minWidth: "40px", padding: "4px" }}
+          >
+            <Edit fontSize="small" />
+          </Button>
+
+        </Box>
+      ),
+    },
+  ];
 
   return (
     <Box className="space-y-4">
       <Typography variant="h5" sx={{ fontWeight: 600 }}>
-        Create/Employees
+        Employees
       </Typography>
 
-      {/* Top Buttons */}
+      {employeesError && !apiError && <Alert severity="error">{employeesError}</Alert>}
+
+      {apiError && (
+        <Alert severity="error" onClose={() => setApiError("")}>
+          {apiError}
+        </Alert>
+      )}
+
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
         <Button
           variant="contained"
           startIcon={<FilterList />}
-          onClick={() => setShowFilters((prev) => !prev)}
+          onClick={() => setShowFilters((previousValue) => !previousValue)}
         >
-          {/* show collapse icon when filters are open */}
           {showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </Button>
 
         <Button
           variant="contained"
           startIcon={<Add />}
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setApiError("");
+            setIsModalOpen(true);
+          }}
           sx={{
             backgroundColor: "#1B0D3F",
             "&:hover": { backgroundColor: "#2D1B69" },
           }}
         >
-          Add
+          Add Employee
         </Button>
       </Box>
 
-      {/* Filters */}
       <Collapse in={showFilters}>
         <Box
           sx={{
@@ -252,21 +401,23 @@ export default function EmployeesPage() {
           <GenericSelectField
             label="Employee Name"
             value={searchNameDraft}
-            onChange={(e) => setSearchNameDraft(e?.target?.value ?? e)}
-            options={makeOptions(employees.map((c) => c.employeeName))}
+            onChange={(event) => setSearchNameDraft(event?.target?.value ?? event)}
+            options={makeOptions(employees.map((employee) => employee.employeeName))}
           />
 
           <GenericSelectField
             label="Email Address"
             value={searchEmailDraft}
-            onChange={(e) => setSearchEmailDraft(e?.target?.value ?? e)}
-            options={makeOptions(employees.map((c) => c.email))}
+            onChange={(event) => setSearchEmailDraft(event?.target?.value ?? event)}
+            options={makeOptions(employees.map((employee) => employee.email))}
           />
 
           <GenericDateField
             value={searchDateDraft}
-            onChange={(valOrEvent) =>
-              setSearchDateDraft(valOrEvent?.target?.value ?? valOrEvent ?? "")
+            onChange={(valueOrEvent) =>
+              setSearchDateDraft(
+                valueOrEvent?.target?.value ?? valueOrEvent ?? "",
+              )
             }
           />
 
@@ -284,36 +435,42 @@ export default function EmployeesPage() {
         </Box>
       </Collapse>
 
-      <GenericTable
-        columns={tableColumns}
-        data={filteredData}
-        emptyMessage="No Employee found"
-      />
+      {employeesLoading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <GenericTable
+          columns={tableColumns}
+          data={filteredEmployees}
+          emptyMessage="No employees found"
+        />
+      )}
 
-      <GenericModal
+      <FormModal
         open={isModalOpen}
         onOpenChange={(isOpen) => {
           setIsModalOpen(isOpen);
           if (!isOpen) {
-            setSelectedDepartment(""); // Reset when modal closes
+            setSelectedDepartment("");
           }
         }}
-        title="Create Employee"
+        title="Add Employee"
         mode="add"
-        columns={2}
         onSubmit={handleCreateEmployee}
         onCustomChange={handleModalChange}
         fields={[
-          { id: "employeeName", label: "Employee Name" },
-          { id: "phone", label: "Phone Number" },
-          { id: "email", label: "Email" },
-          { id: "address", label: "Address" },
+          { id: "employeeName", label: "Employee Name", required: true },
+          { id: "phone", label: "Phone Number", required: true },
+          { id: "email", label: "Email", required: true },
+          { id: "address", label: "Address", required: true },
           {
             id: "department",
             label: "Department",
             type: "select",
             placeholder: "Select department",
             options: departmentOptions,
+            required: true,
           },
           {
             id: "designation",
@@ -321,6 +478,58 @@ export default function EmployeesPage() {
             type: "select",
             placeholder: "Select designation",
             options: designationOptions,
+            required: true,
+          },
+        ]}
+        loading={apiLoading}
+        error={apiError}
+      />
+
+      <FormModal
+        open={isEditModalOpen}
+        onOpenChange={(isOpen) => {
+          setIsEditModalOpen(isOpen);
+          if (!isOpen) {
+            setEditingEmployee(null);
+            setSelectedDepartment("");
+          }
+        }}
+        title="Edit Employee"
+        mode="edit"
+        onSubmit={handleUpdateEmployee}
+        onCustomChange={handleModalChange}
+        selectedRow={
+          editingEmployee
+            ? {
+              employeeName: editingEmployee.employeeName,
+              phone: editingEmployee.phone,
+              email: editingEmployee.email,
+              address: editingEmployee.address,
+              department: editingEmployee.department_id || selectedDepartment,
+              designation: editingEmployee.designation_id || "",
+            }
+            : null
+        }
+        fields={[
+          { id: "employeeName", label: "Employee Name", required: true },
+          { id: "phone", label: "Phone Number", required: true },
+          { id: "email", label: "Email", required: true },
+          { id: "address", label: "Address", required: true },
+          {
+            id: "department",
+            label: "Department",
+            type: "select",
+            placeholder: "Select department",
+            options: departmentOptions,
+            required: true,
+          },
+          {
+            id: "designation",
+            label: "Designation",
+            type: "select",
+            placeholder: "Select designation",
+            options: designationOptions,
+            required: true,
           },
         ]}
         loading={apiLoading}
@@ -328,4 +537,6 @@ export default function EmployeesPage() {
       />
     </Box>
   );
-}
+};
+
+export default EmployeesPage;

@@ -82,3 +82,19 @@ export const fetchCustomersApi = async () => {
 
   return normalizeListPayload(listPayload);
 };
+
+export const updateCustomerApi = async (customerData) => {
+  const formData = new FormData();
+  formData.append("action", "edit");
+  appendIfPresent(formData, "name", customerData?.customerName);
+  appendIfPresent(formData, "number", customerData?.phone);
+  appendIfPresent(formData, "email", customerData?.email);
+  appendIfPresent(formData, "address", customerData?.address);
+  appendIfPresent(formData, "customer_id", customerData?.id);
+
+  const res = await apiClient.post("/customer_api.php", formData);
+  const payload = res?.data ?? {};
+
+  assertApiSuccess(payload, "Failed to update customer");
+  return payload?.data ?? payload;
+};

@@ -67,18 +67,16 @@ export default function AppRoutes() {
         {/* Redirect root to a default tab (dashboard) */}
         <Route index element={<Navigate to="dashboard" replace />} />
 
-        {/* Parent route that renders hero tabs + an Outlet for nested tab pages */}
+        {/* Tab routes with TabContent layout */}
         <Route element={<TabContent />}>
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="income" element={<IncomePage />} />
           <Route path="expense" element={<ExpensePage />} />
           <Route path="invoices" element={<InvoicesPage />} />
           <Route path="cashbook" element={<CashbookPage />} />
-          {/* fallback placeholder route for other tabs you might have */}
-          <Route path=":other" element={<PlaceholderPage />} />
         </Route>
 
-        {/* Other top-level routes (create/report pages) remain siblings */}
+        {/* Other top-level routes (create/report pages) - render without TabContent */}
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="vendors" element={<VendorsPage />} />
@@ -89,8 +87,8 @@ export default function AppRoutes() {
         <Route path="cash-in-out" element={<CashInOutPage />} />
         <Route path="ledger" element={<LedgerPage />} />
         <Route path="account-settings" element={<AccountSetting />} />
-        {/* <Route path="/switch-account" element={<SwitchAccount />} /> */}
         <Route path="switch-account" element={<SwitchAccount />} />
+
         {/* Catch-all for undefined routes */}
         <Route path="*" element={<PageNotFound />} />
       </Route>

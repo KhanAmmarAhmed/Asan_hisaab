@@ -6,7 +6,7 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { Plus, Trash2, Edit2 } from "lucide-react";
+import { Plus, Edit2 } from "lucide-react";
 import GenericModal from "../../generic/GenericModal";
 
 // 👉 Fixed API function names (correct casing)
@@ -65,7 +65,7 @@ const DesignationsPage = () => {
         required: true,
         options: (departments || []).map((dept) => ({
           value: dept.id,
-          label: dept.departments_name || dept.name || "N/A",
+          label: dept.department_name || "N/A",
         })),
       },
       {
@@ -82,6 +82,16 @@ const DesignationsPage = () => {
   useEffect(() => {
     loadDepartments();
     loadDesignations();
+  }, []);
+
+  // Close modals when component unmounts (user navigates away)
+  useEffect(() => {
+    return () => {
+      setIsModalOpen(false);
+      setIsEditModalOpen(false);
+      setEditingDesignation(null);
+      setApiError("");
+    };
   }, []);
 
   const loadDepartments = async () => {
@@ -169,12 +179,20 @@ const DesignationsPage = () => {
       setApiLoading(true);
       setApiError("");
 
-      await updateDesignationApi({
-        id: editingDesignation.id,
-        departmentId: formData.departmentId,
-        designationName: formData.designationName,
-        status: editingDesignation.status || "1",
-      });
+      // Ensure all required fields are present and properly formatted
+      if (!formData.departmentId || !formData.designationName) {
+        throw new Error("Please fill in all required fields");
+      }
+
+      const updatePayload = {
+        id: editingDesignation?.id, // becomes designation_id in API
+        departmentId: String(formData.departmentId).trim(), // becomes department_id in API
+        designationName: String(formData.designationName).trim(), // becomes designation in API
+        status: String(editingDesignation?.status || "1"), // status in API
+      };
+
+
+      await updateDesignationApi(updatePayload);
 
       await loadDesignations();
       setIsEditModalOpen(false);
@@ -245,10 +263,10 @@ const DesignationsPage = () => {
             >
               <Box flex={1}>
                 <Typography variant="body2" fontWeight={600}>
-                  {d.designation || d.designation_name || "N/A"}
+                  {d.designation || d.designation_name}
                 </Typography>
                 <Typography variant="caption" color="textSecondary">
-                  Dept ID: {d.department_id || "N/A"}
+                  <strong>Department Name:</strong> {d.department_name},
                 </Typography>
               </Box>
 
@@ -278,27 +296,27 @@ const DesignationsPage = () => {
         error={apiError}
       />
 
-      {/* Edit Modal */}
       <GenericModal
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
+        mode="edit"
         fields={editDesignationFields}
+        selectedRow={
+          editingDesignation
+            ? {
+                ...editingDesignation,
+                departmentId: editingDesignation.department_id,
+                designationName:
+                  editingDesignation.designation_name ||
+                  editingDesignation.designation,
+              }
+            : null
+        }
         onSubmit={handleSaveEditDesignation}
         title="Edit Designation"
         submitButtonLabel="Update"
         loading={apiLoading}
         error={apiError}
-        initialValues={
-          editingDesignation
-            ? {
-                departmentId: editingDesignation.department_id,
-                designationName:
-                  editingDesignation.designation ||
-                  editingDesignation.designation_name ||
-                  "",
-              }
-            : {}
-        }
       />
     </Box>
   );

@@ -1,4 +1,5 @@
-import { useState, useContext, useMemo, useEffect } from "react";
+import { useState, useContext, useMemo, useEffect, useCallback } from "react";
+
 import Box from "@mui/material/Box";
 import {
   Button,
@@ -54,13 +55,75 @@ const ExpensePage = () => {
   const [apiError, setApiError] = useState("");
   const [fetchLoading, setFetchLoading] = useState(true);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     document.body.classList.add("print-detail-modal");
-    const cleanup = () =>
-      document.body.classList.remove("print-detail-modal");
+    const cleanup = () => document.body.classList.remove("print-detail-modal");
     window.addEventListener("afterprint", cleanup, { once: true });
     window.print();
-  };
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    const dialogEl = document.querySelector('[role="dialog"] .MuiPaper-root');
+    if (!dialogEl) return;
+    try {
+      const { default: html2canvas } = await import("html2canvas");
+      const canvas = await html2canvas(dialogEl, { scale: 2, useCORS: true });
+      const link = document.createElement("a");
+      link.download = `expense-${selectedRow?.voucher || "receipt"}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (err) {
+      console.error("Save failed:", err);
+    }
+  }, [selectedRow]);
+
+  const handleShare = useCallback(async () => {
+    if (!selectedRow) return;
+    const text =
+      `Expense Detail\n` +
+      `Voucher: FIS-${String(selectedRow.voucher || "").padStart(7, "0")}\n` +
+      `Entity: ${selectedRow.entityName || ""}\n` +
+      `Account Head: ${selectedRow.accountHead || ""}\n` +
+      `Payment Method: ${selectedRow.paymentMethod || ""}\n` +
+      `Date: ${selectedRow.date || ""}\n` +
+      `Amount: ${selectedRow.amount || ""}\n` +
+      `Description: ${selectedRow.description || ""}`.trim();
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Expense Detail", text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        alert("Details copied to clipboard!");
+      }
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        console.error("Share failed:", err);
+      }
+    }
+  }, [selectedRow]);
+
+  const handleOnEdit = useCallback(() => {
+    setModalMode("edit");
+  }, []);
+
+  const formatCurrency = useCallback((amount) => {
+    return `Rs. ${Number(amount || 0).toLocaleString()}`;
+  }, []);
+
+  const handleRowClick = useCallback((row) => {
+    setSelectedRow(row);
+    setModalMode("detail-actions");
+    setIsModalOpen(true);
+  }, []);
+
+  const handleModalClose = useCallback((open) => {
+    setIsModalOpen(open);
+    if (!open) {
+      setModalMode("add");
+      setSelectedRow(null);
+    }
+  }, []);
+
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -84,7 +147,21 @@ const ExpensePage = () => {
     return "[Entity Name Not Provided]";
   };
 
+  // Cleanup modal state on unmount
   useEffect(() => {
+    return () => {
+      setIsModalOpen(false);
+      setModalMode("add");
+      setSelectedRow(null);
+      setShowFilters(false);
+      setApiError("");
+    };
+  }, []); // Run only on unmount
+
+
+  useEffect(() => {
+    const abortController = new AbortController();
+
     const fetchExpenseData = async () => {
       try {
         setFetchLoading(true);
@@ -122,13 +199,20 @@ const ExpensePage = () => {
         setExpenseData(mappedData);
       } catch (error) {
         console.error("Error fetching expense data:", error);
-        setApiError("Failed to load expense data from server: " + error.message);
+        setApiError(
+          "Failed to load expense data from server: " + error.message,
+        );
       } finally {
         setFetchLoading(false);
       }
     };
 
     fetchExpenseData();
+
+    // Cleanup: abort request if component unmounts
+    return () => {
+      abortController.abort();
+    };
   }, []);
 
   const handleAddExpense = async (formData) => {
@@ -185,9 +269,7 @@ const ExpensePage = () => {
       setIsModalOpen(false);
     } catch (error) {
       console.error("Error adding expense:", error);
-      setApiError(
-        error.message || "Failed to add expense. Please try again.",
-      );
+      setApiError(error.message || "Failed to add expense. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -230,7 +312,9 @@ const ExpensePage = () => {
       setModalMode("add");
     } catch (error) {
       console.error("Error updating expense:", error);
-      setApiError(error.message || "Failed to update expense. Please try again.");
+      setApiError(
+        error.message || "Failed to update expense. Please try again.",
+      );
     }
   };
 
@@ -241,31 +325,102 @@ const ExpensePage = () => {
     setModalMode("add");
   };
 
-  const handleOnEdit = () => {
-    setModalMode("edit");
-  };
 
-  const formatCurrency = (amount) => {
-    return `Rs. ${Number(amount || 0).toLocaleString()}`;
-  };
+  const entityOptions = useMemo(
+    () => [
+      ...customers.map((c) => ({
+        label: c.entityName || c.customerName,
+        value: c.entityName || c.customerName,
+        type: "customer",
+      })),
+      ...vendors.map((v) => ({
+        label: v.vendorName || v.venderName,
+        value: v.vendorName || v.venderName,
+        type: "vendor",
+      })),
+      ...employees.map((e) => ({
+        label: e.employeeName,
+        value: e.employeeName,
+        type: "employee",
+      })),
+    ],
+    [customers, vendors, employees],
+  );
 
-  const entityOptions = [
-    ...customers.map((c) => ({
-      label: c.entityName || c.customerName,
-      value: c.entityName || c.customerName,
-      type: "customer",
-    })),
-    ...vendors.map((v) => ({
-      label: v.vendorName || v.venderName,
-      value: v.vendorName || v.venderName,
-      type: "vendor",
-    })),
-    ...employees.map((e) => ({
-      label: e.employeeName,
-      value: e.employeeName,
-      type: "employee",
-    })),
-  ];
+  // Memoize fields array to prevent GenericModal form reset on every render
+  const expenseFields = useMemo(() => {
+    return modalMode === "add" || modalMode === "edit"
+      ? [
+          {
+            id: "entityName",
+            label: "Entity Name",
+            type: "select",
+            options: entityOptions,
+            renderOption: (props, option) => {
+              const { key, ...otherProps } = props;
+              const color =
+                option.type === "employee"
+                  ? "#4caf50"
+                  : option.type === "vendor"
+                    ? "#ff9800"
+                    : "#2196f3";
+
+              return (
+                <li key={key} {...otherProps}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      width: "100%",
+                    }}
+                  >
+                    {option.label}
+
+                    <Box
+                      sx={{
+                        ml: "auto",
+                        px: 1,
+                        py: 0.2,
+                        borderRadius: "12px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        backgroundColor: color,
+                        color: "white",
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {option.type}
+                    </Box>
+                  </Box>
+                </li>
+              );
+            },
+          },
+          { id: "accountHead", label: "Account Head" },
+          {
+            id: "paymentMethod",
+            label: "Payment Method",
+            placeHolder: "Select payment method",
+            type: "select",
+            options: paymentOptions,
+          },
+          { id: "amount", label: "Amount" },
+          {
+            id: "description",
+            label: "Description",
+            type: "textarea",
+            rows: 2,
+            fullWidth: true,
+          },
+        ]
+      : [
+          { id: "entityName", label: "Customer Name" },
+          { id: "accountHead", label: "Account Head" },
+          { id: "paymentMethod", label: "Payment Method" },
+          { id: "date", label: "Date" },
+          { id: "amount", label: "Amount" },
+        ];
+  }, [modalMode, entityOptions]);
 
   const filteredData = useMemo(() => {
     return expenseData.filter((item) => {
@@ -283,20 +438,6 @@ const ExpensePage = () => {
       );
     });
   }, [expenseData, entityName, accountHead, searchDate]);
-
-  const handleRowClick = (row) => {
-    setSelectedRow(row);
-    setModalMode("detail-actions");
-    setIsModalOpen(true);
-  };
-
-  const handleModalClose = (open) => {
-    setIsModalOpen(open);
-    if (!open) {
-      setModalMode("add");
-      setSelectedRow(null);
-    }
-  };
 
   return (
     <Box className="space-y-4">
@@ -430,85 +571,15 @@ const ExpensePage = () => {
             columns={2}
             showFileUpload={modalMode === "add" || modalMode === "edit"}
             selectedRow={selectedRow}
-            onSubmit={modalMode === "edit" ? handleEditExpense : handleAddExpense}
+            onSubmit={
+              modalMode === "edit" ? handleEditExpense : handleAddExpense
+            }
             loading={loading}
             error={apiError}
-            fields={
-              modalMode === "add" || modalMode === "edit"
-                ? [
-                    {
-                      id: "entityName",
-                      label: "Entity Name",
-                      type: "select",
-                      options: entityOptions,
-                      renderOption: (props, option) => {
-                        const { key, ...otherProps } = props; // Extract key separately
-                        const color =
-                          option.type === "employee"
-                            ? "#4caf50"
-                            : option.type === "vendor"
-                              ? "#ff9800"
-                              : "#2196f3";
-
-                        return (
-                          <li key={key} {...otherProps}>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                width: "100%",
-                              }}
-                            >
-                              {option.label}
-
-                              <Box
-                                sx={{
-                                  ml: "auto",
-                                  px: 1,
-                                  py: 0.2,
-                                  borderRadius: "12px",
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  backgroundColor: color,
-                                  color: "white",
-                                  textTransform: "capitalize",
-                                }}
-                              >
-                                {option.type}
-                              </Box>
-                            </Box>
-                          </li>
-                        );
-                      },
-                    },
-                    { id: "accountHead", label: "Account Head" },
-                    {
-                      id: "paymentMethod",
-                      label: "Payment Method",
-                      placeHolder: "Select payment method",
-                      type: "select",
-                      options: paymentOptions,
-                    },
-                    { id: "amount", label: "Amount" },
-                    {
-                      id: "description",
-                      label: "Description",
-                      type: "textarea",
-                      rows: 2,
-                      fullWidth: true,
-                    },
-                  ]
-                : [
-                    { id: "entityName", label: "Customer Name" },
-                    { id: "accountHead", label: "Account Head" },
-                    { id: "paymentMethod", label: "Payment Method" },
-                    { id: "date", label: "Date" },
-                    { id: "amount", label: "Amount" },
-                  ]
-            }
+            fields={expenseFields}
             onPrint={handlePrint}
-            onShare={() => console.log("Share clicked")}
-            onSave={() => console.log("Save clicked")}
+            onShare={handleShare}
+            onSave={handleSave}
             onEdit={handleOnEdit}
             onCopy={handleCopyExpense}
           />

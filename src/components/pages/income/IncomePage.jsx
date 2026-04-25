@@ -1,4 +1,5 @@
-import { useState, useContext, useMemo, useEffect } from "react";
+import { useState, useContext, useMemo, useEffect, useCallback } from "react";
+
 import Box from "@mui/material/Box";
 import {
   Button,
@@ -54,12 +55,52 @@ export default function IncomePage() {
   const [apiError, setApiError] = useState("");
   const [fetchLoading, setFetchLoading] = useState(true);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     document.body.classList.add("print-detail-modal");
     const cleanup = () => document.body.classList.remove("print-detail-modal");
     window.addEventListener("afterprint", cleanup, { once: true });
     window.print();
-  };
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    const dialogEl = document.querySelector('[role="dialog"] .MuiPaper-root');
+    if (!dialogEl) return;
+    try {
+      const { default: html2canvas } = await import("html2canvas");
+      const canvas = await html2canvas(dialogEl, { scale: 2, useCORS: true });
+      const link = document.createElement("a");
+      link.download = `income-${selectedRow?.voucher || "receipt"}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (err) {
+      console.error("Save failed:", err);
+    }
+  }, [selectedRow]);
+
+  const handleShare = useCallback(async () => {
+    if (!selectedRow) return;
+    const text =
+      `Income Detail\n` +
+      `Voucher: FIS-${String(selectedRow.voucher || "").padStart(7, "0")}\n` +
+      `Entity: ${selectedRow.entityName || ""}\n` +
+      `Account Head: ${selectedRow.accountHead || ""}\n` +
+      `Payment Method: ${selectedRow.paymentMethod || ""}\n` +
+      `Date: ${selectedRow.date || ""}\n` +
+      `Amount: ${selectedRow.amount || ""}\n` +
+      `Description: ${selectedRow.description || ""}`.trim();
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Income Detail", text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        alert("Details copied to clipboard!");
+      }
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        console.error("Share failed:", err);
+      }
+    }
+  }, [selectedRow]);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -86,15 +127,26 @@ export default function IncomePage() {
     return "[Entity Name Not Provided]";
   };
 
+  // Cleanup modal state on unmount
+  useEffect(() => {
+    return () => {
+      setIsModalOpen(false);
+      setModalMode("add");
+      setSelectedRow(null);
+      setShowFilters(false);
+      setApiError("");
+    };
+  }, []); // Run only on unmount
+
   // Fetch income data from API on component mount
   useEffect(() => {
+    const abortController = new AbortController();
+
     const fetchIncomeData = async () => {
       try {
         setFetchLoading(true);
         const data = await fetchTransactionsApi("income");
-        // console.log("Raw API Response:", data);
 
-        // Map API response to match table columns
         const mappedData = (Array.isArray(data) ? data : []).map(
           (item, index) => {
             // Extract date from created_at if available
@@ -126,7 +178,6 @@ export default function IncomePage() {
           },
         );
 
-        // console.log("Mapped Data:", mappedData);
         setIncomeData(mappedData);
       } catch (error) {
         console.error("Error fetching income data:", error);
@@ -137,26 +188,34 @@ export default function IncomePage() {
     };
 
     fetchIncomeData();
+
+    // Cleanup: abort request if component unmounts
+    return () => {
+      abortController.abort();
+    };
   }, []);
 
   // Create entity options combining customers, vendors, and employees
-  const entityOptions = [
-    ...customers.map((c) => ({
-      label: c.entityName || c.customerName,
-      value: c.entityName || c.customerName,
-      type: "customer",
-    })),
-    ...vendors.map((v) => ({
-      label: v.vendorName || v.venderName,
-      value: v.vendorName || v.venderName,
-      type: "vendor",
-    })),
-    ...employees.map((e) => ({
-      label: e.employeeName,
-      value: e.employeeName,
-      type: "employee",
-    })),
-  ];
+  const entityOptions = useMemo(
+    () => [
+      ...customers.map((c) => ({
+        label: c.entityName || c.customerName,
+        value: c.entityName || c.customerName,
+        type: "customer",
+      })),
+      ...vendors.map((v) => ({
+        label: v.vendorName || v.venderName,
+        value: v.vendorName || v.venderName,
+        type: "vendor",
+      })),
+      ...employees.map((e) => ({
+        label: e.employeeName,
+        value: e.employeeName,
+        type: "employee",
+      })),
+    ],
+    [customers, vendors, employees],
+  );
 
   const handleAddIncome = async (formData) => {
     setLoading(true);
@@ -197,7 +256,7 @@ export default function IncomePage() {
 
       // Call the API to add transaction
       const apiResponse = await addIncomeTransactionApi(transactionData);
-      console.log("API Response:", apiResponse);
+      // console.log("API Response:", apiResponse);
 
       // Create local entry after API success (without file data to avoid storage quota issues)
       const newVoucher = String(incomeData.length + 1).padStart(2, "0");
@@ -278,12 +337,96 @@ export default function IncomePage() {
     setModalMode("add");
   };
 
-  const handleOnEdit = () => {
+  const handleOnEdit = useCallback(() => {
     setModalMode("edit");
-  };
-  const formatCurrency = (amount) => {
+  }, []);
+
+  const formatCurrency = useCallback((amount) => {
     return `Rs. ${Number(amount || 0).toLocaleString()}`;
-  };
+  }, []);
+
+  const handleModalClose = useCallback((open) => {
+    setIsModalOpen(open);
+    if (!open) {
+      setModalMode("add");
+      setSelectedRow(null);
+    }
+  }, []);
+
+  // Memoize fields array to prevent GenericModal form reset on every render
+  const incomeFields = useMemo(() => {
+    return modalMode === "add" || modalMode === "edit"
+      ? [
+          {
+            id: "entityName",
+            label: "Entity Name",
+            type: "select",
+            options: entityOptions,
+            renderOption: (props, option) => {
+              const { key, ...otherProps } = props;
+              const color =
+                option.type === "employee"
+                  ? "#4caf50"
+                  : option.type === "vendor"
+                    ? "#ff9800"
+                    : "#2196f3";
+
+              return (
+                <li key={key} {...otherProps}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      width: "100%",
+                    }}
+                  >
+                    {option.label}
+
+                    <Box
+                      sx={{
+                        ml: "auto",
+                        px: 1,
+                        py: 0.2,
+                        borderRadius: "12px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        backgroundColor: color,
+                        color: "white",
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {option.type}
+                    </Box>
+                  </Box>
+                </li>
+              );
+            },
+          },
+          { id: "accountHead", label: "Account Head" },
+          {
+            id: "paymentMethod",
+            label: "Payment Method",
+            type: "select",
+            options: paymentOptions,
+          },
+          { id: "amount", label: "Amount" },
+          {
+            id: "description",
+            label: "Description",
+            type: "textarea",
+            rows: 2,
+            fullWidth: true,
+          },
+        ]
+      : [
+          { id: "entityName", label: "Entity Name" },
+          { id: "accountHead", label: "Account Head" },
+          { id: "paymentMethod", label: "Payment Method" },
+          { id: "date", label: "Date" },
+          { id: "amount", label: "Amount" },
+        ];
+  }, [modalMode, entityOptions]);
+
   const filteredData = useMemo(() => {
     return incomeData.filter((item) => {
       return (
@@ -301,13 +444,7 @@ export default function IncomePage() {
     });
   }, [incomeData, entityName, accountHead, searchDate]);
 
-  const handleModalClose = (open) => {
-    setIsModalOpen(open);
-    if (!open) {
-      setModalMode("add");
-      setSelectedRow(null);
-    }
-  };
+
 
   return (
     <Box className="space-y-4">
@@ -452,81 +589,10 @@ export default function IncomePage() {
             showFileUpload={modalMode === "add" || modalMode === "edit"}
             loading={loading}
             error={apiError}
-            fields={
-              modalMode === "add" || modalMode === "edit"
-                ? [
-                    {
-                      id: "entityName",
-                      label: "Entity Name",
-                      type: "select",
-                      options: entityOptions,
-                      renderOption: (props, option) => {
-                        const { key, ...otherProps } = props; // Extract key separately
-                        const color =
-                          option.type === "employee"
-                            ? "#4caf50"
-                            : option.type === "vendor"
-                              ? "#ff9800"
-                              : "#2196f3";
-
-                        return (
-                          <li key={key} {...otherProps}>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                width: "100%",
-                              }}
-                            >
-                              {option.label}
-
-                              <Box
-                                sx={{
-                                  ml: "auto",
-                                  px: 1,
-                                  py: 0.2,
-                                  borderRadius: "12px",
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  backgroundColor: color,
-                                  color: "white",
-                                  textTransform: "capitalize",
-                                }}
-                              >
-                                {option.type}
-                              </Box>
-                            </Box>
-                          </li>
-                        );
-                      },
-                    },
-                    { id: "accountHead", label: "Account Head" },
-                    {
-                      id: "paymentMethod",
-                      label: "Payment Method",
-                      type: "select",
-                      options: paymentOptions,
-                    },
-                    { id: "amount", label: "Amount" },
-                    {
-                      id: "description",
-                      label: "Description",
-                      type: "textarea",
-                      rows: 2,
-                      fullWidth: true,
-                    },
-                  ]
-                : [
-                    { id: "entityName", label: "Entity Name" },
-                    { id: "accountHead", label: "Account Head" },
-                    { id: "paymentMethod", label: "Payment Method" },
-                    { id: "date", label: "Date" },
-                    { id: "amount", label: "Amount" },
-                  ]
-            }
+            fields={incomeFields}
             onPrint={handlePrint}
-            onShare={() => console.log("Share clicked")}
-            onSave={() => console.log("Save clicked")}
+            onShare={handleShare}
+            onSave={handleSave}
             onEdit={handleOnEdit}
             onCopy={handleCopyIncome}
           />

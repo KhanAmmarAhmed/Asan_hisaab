@@ -80,23 +80,37 @@ export default function GenericModal({
   const [formData, setFormData] = useState({});
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [fileError, setFileError] = useState("");
+  const [hasInitialized, setHasInitialized] = useState(false);
   const [newItem, setNewItem] = useState({
     itemName: "",
     quantity: 1,
     price: 0,
   });
+  console.log("🔍 Modal State:", receivableData);
   const { currentAccount, accounts } = useAuth();
   const inputRef = useRef(null);
-
   const handleAddItem = () => {
     if (!newItem.itemName) return;
     const items = formData.items || [];
     const total = newItem.quantity * newItem.price;
     const itemWithTotal = { ...newItem, total, id: Date.now() };
+
+    // Console logging for debugging
+    console.log("📝 Adding Item to Payable Invoice:", {
+      itemName: newItem.itemName,
+      quantity: newItem.quantity,
+      price: newItem.price,
+      total: total,
+      itemId: itemWithTotal.id,
+    });
+
     setFormData((prev) => ({
       ...prev,
       items: [...items, itemWithTotal],
     }));
+
+    console.log("✅ Item added successfully! Total items:", items.length + 1);
     setNewItem({ itemName: "", quantity: 1, price: 0 });
   };
 
@@ -105,11 +119,25 @@ export default function GenericModal({
     0,
   );
 
-  // Pre-populate form data when editing
+  // Effect 1: Reset all form state when modal closes
+  // Only depends on `open` — this prevents `fields` reference changes from
+  // triggering the reset branch and causing an infinite re-render loop.
   useEffect(() => {
+    if (!open) {
+      setFormData((prev) => (Object.keys(prev).length === 0 ? prev : {}));
+      setSelectedFile(null);
+      setDragActive(false);
+      setHasInitialized(false);
+      setFileError("");
+    }
+  }, [open]);
+
+  // Effect 2: Initialize form data when modal opens (runs once per open)
+  useEffect(() => {
+    if (!open || hasInitialized) return;
+
     if (selectedRow && (mode === "add" || mode === "form" || mode === "edit")) {
       const initialData = {};
-
       fields.forEach((field) => {
         if (field.defaultValue !== undefined) {
           initialData[field.id] = field.defaultValue;
@@ -118,16 +146,19 @@ export default function GenericModal({
         }
       });
       setFormData(initialData);
+      setHasInitialized(true);
+      return;
     }
 
-    // Initialize with payable data for step 1
     if (mode === "payable-step1") {
       setFormData({
         entity: payableData?.entityName || "",
         dueDate: payableData?.dueDate || "",
       });
+      setHasInitialized(true);
+      return;
     }
-    // Add this after your existing mode initializations
+
     if (mode === "payable-step1.5") {
       setFormData((prev) => ({
         ...prev,
@@ -135,52 +166,67 @@ export default function GenericModal({
         dueDate: payableData?.dueDate || "",
         items: payableData?.items || [],
       }));
+      setHasInitialized(true);
+      return;
     }
 
-    // Initialize with payable data for step 2
     if (mode === "payable-step2") {
       setFormData({
         items: payableData?.items || [],
-        // amount: payableData?.amount || "",
-        discount: payableData?.discount || "",
-        subTotal: payableData?.subTotal || "",
-        taxAble: payableData?.taxAble || "",
-        grandTotal: payableData?.grandTotal || "",
+        amount:
+          (payableData?.items || []).reduce(
+            (sum, item) => sum + (item.total || 0),
+            0,
+          ) || 0,
+        discount: payableData?.discount || 0,
+        subTotal: payableData?.subTotal || 0,
+        taxAble: payableData?.taxAble || "No",
+        grandTotal: payableData?.grandTotal || 0,
+        reference: payableData?.reference || "",
       });
+      setHasInitialized(true);
+      return;
     }
 
-    // Initialize with receivable data
     if (mode === "receivable-step1") {
       setFormData({
         customer: receivableData?.customer || "",
         dueDate: receivableData?.dueDate || "",
       });
+      setHasInitialized(true);
+      return;
     }
+
     if (mode === "receivable-step1.5") {
       setFormData((prev) => ({
         ...prev,
         customer: receivableData?.customer || "",
         dueDate: receivableData?.dueDate || "",
-        items: receivableData?.items || [], // Preserve items if coming back
+        items: receivableData?.items || [],
       }));
+      setHasInitialized(true);
+      return;
     }
 
     if (mode === "receivable-step2") {
       setFormData({
-        amount: receivableData?.amount || "",
-        discount: receivableData?.discount || "",
-        subTotal: receivableData?.subTotal || "",
-        taxAble: receivableData?.taxAble || "",
-        grandTotal: receivableData?.grandTotal || "",
+        amount: receivableData?.amount || 0,
+        discount: receivableData?.discount || 0,
+        subTotal: receivableData?.subTotal || 0,
+        taxAble: receivableData?.taxAble || "No",
+        grandTotal: receivableData?.grandTotal || 0,
       });
+      setHasInitialized(true);
+      return;
     }
 
-    // Clear file when modal closes
-    if (!open) {
-      setSelectedFile(null);
-      setDragActive(false);
+    // For add/form mode without selectedRow
+    if (mode === "add" || mode === "form") {
+      setHasInitialized(true);
+      return;
     }
-  }, [selectedRow, mode, fields, open, receivableData, payableData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, hasInitialized, mode, selectedRow, payableData, receivableData]);
 
   // Compute and store subTotal and grandTotal for payable-step2
   useEffect(() => {
@@ -221,18 +267,60 @@ export default function GenericModal({
     }
   };
 
+  // const handleDrop = (e) => {
+  //   e.preventDefault();
+  //   e.stopPropagation();
+  //   setDragActive(false);
+  //   if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+  //     setSelectedFile(e.dataTransfer.files[0]);
+  //   }
+  // };
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setSelectedFile(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      if (!isAllowedFileType(file)) {
+        setFileError("Only SVG, PNG, JPG, or GIF files are allowed.");
+        setSelectedFile(null);
+        return;
+      }
+      setFileError("");
+      setSelectedFile(file);
     }
   };
+  const isAllowedFileType = (file) => {
+    const allowedExtensions = ["svg", "png", "jpg", "jpeg", "gif"];
+    const allowedMimeTypes = [
+      "image/svg+xml",
+      "image/png",
+      "image/jpeg",
+      "image/gif",
+    ];
+    const extension = file.name.split(".").pop().toLowerCase();
+    return (
+      allowedExtensions.includes(extension) ||
+      allowedMimeTypes.includes(file.type)
+    );
+  };
 
+  // const handleFileChange = (e) => {
+  //   if (e.target.files && e.target.files[0]) {
+  //     setSelectedFile(e.target.files[0]);
+  //   }
+  // };
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      if (!isAllowedFileType(file)) {
+        setFileError("Only SVG, PNG, JPG, or GIF files are allowed.");
+        setSelectedFile(null);
+        e.target.value = ""; // clear input
+        return;
+      }
+      setFileError("");
+      setSelectedFile(file);
     }
   };
 
@@ -268,6 +356,17 @@ export default function GenericModal({
         finalData.file = selectedFile;
       }
     }
+
+    // Console logging for debugging
+    console.log("📤 Submitting Form Data:", {
+      mode,
+      finalData,
+      itemsCount: finalData.items?.length || 0,
+      itemsTotal: (finalData.items || []).reduce(
+        (sum, item) => sum + (item.total || 0),
+        0,
+      ),
+    });
 
     if (onSubmit) {
       await Promise.resolve(onSubmit(finalData));
@@ -534,8 +633,17 @@ export default function GenericModal({
                           or drag and drop
                         </Typography>
                         <Typography variant="caption" color="textSecondary">
-                          SVG, PNG, JPG or GIF (max. 5MB)
+                          SVG, PNG, JPG or GIF
                         </Typography>
+                        {fileError && (
+                          <Typography
+                            color="error"
+                            variant="caption"
+                            sx={{ mt: 1 }}
+                          >
+                            {fileError}
+                          </Typography>
+                        )}
                       </>
                     ) : (
                       <Box
@@ -1020,6 +1128,26 @@ export default function GenericModal({
         {/* ========== PAYABLE and RECEIVABLE STEP 2 ========== */}
         {mode === "payable-step2" && (
           <>
+            {/* Items Table */}
+            <Box sx={{ mb: 3 }}>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 600, mb: 1.5, color: "#1B0D3F" }}
+              >
+                Items Summary
+              </Typography>
+              <GenericTable
+                columns={[
+                  { id: "itemName", label: "Item Name", width: "40%" },
+                  { id: "quantity", label: "Quantity", width: "20%" },
+                  { id: "price", label: "Price", width: "20%" },
+                  { id: "total", label: "Total", width: "20%" },
+                ]}
+                data={formData.items || []}
+                emptyMessage="No items added"
+              />
+            </Box>
+
             <Box>
               <Typography
                 variant="subtitle1"
@@ -1042,7 +1170,7 @@ export default function GenericModal({
                     fullWidth
                     type="number"
                     placeholder="Enter amount"
-                    value={itemsTotal || formData.amount || ""}
+                    value={itemsTotal || 0}
                     onChange={(e) => handleChange("amount", e.target.value)}
                     size="small"
                     InputProps={{
@@ -1090,7 +1218,12 @@ export default function GenericModal({
                   fullWidth
                   type="number"
                   placeholder="Enter Sub Total"
-                  value={Number(itemsTotal) - Number(formData.discount) || ""}
+                  value={(() => {
+                    const total =
+                      (Number(itemsTotal) || 0) -
+                      (Number(formData.discount) || 0);
+                    return isNaN(total) ? "" : total;
+                  })()}
                   onChange={(e) => handleChange("subTotal", e.target.value)}
                   size="small"
                   sx={{
@@ -1128,13 +1261,15 @@ export default function GenericModal({
                   fullWidth
                   type="number"
                   placeholder="Enter Grand Total"
-                  value={
-                    Number(itemsTotal) -
-                    Number(formData.discount) +
-                    (formData.taxAble === "Yes"
-                      ? (Number(itemsTotal) - Number(formData.discount)) * 0.15
-                      : 0)
-                  }
+                  value={(() => {
+                    const subTotal =
+                      (Number(itemsTotal) || 0) -
+                      (Number(formData.discount) || 0);
+                    const tax =
+                      formData.taxAble === "Yes" ? subTotal * 0.15 : 0;
+                    const total = subTotal + tax;
+                    return isNaN(total) ? "" : total;
+                  })()}
                   onChange={(e) => handleChange("grandTotal", e.target.value)}
                   size="small"
                   sx={{
@@ -1236,12 +1371,12 @@ export default function GenericModal({
                 </Box>
 
                 <Box display="flex" flexDirection="column" width="45%">
-                  <Typography>Discount</Typography>
+                  <Typography>Discount (%)</Typography>
                   <TextField
                     fullWidth
                     type="number"
-                    placeholder="Enter Discount"
-                    value={formData.discount || ""}
+                    placeholder="Enter Discount %"
+                    value={formData.discount || 0}
                     onChange={(e) => handleChange("discount", e.target.value)}
                     size="small"
                     sx={{
@@ -1268,7 +1403,12 @@ export default function GenericModal({
                   fullWidth
                   type="number"
                   placeholder="Enter Sub Total"
-                  value={formData.subTotal || ""}
+                  value={(() => {
+                    const total =
+                      (Number(formData.amount) || 0) -
+                      (Number(formData.discount) || 0);
+                    return isNaN(total) ? "" : total;
+                  })()}
                   onChange={(e) => handleChange("subTotal", e.target.value)}
                   size="small"
                   sx={{
@@ -1306,7 +1446,15 @@ export default function GenericModal({
                   fullWidth
                   type="number"
                   placeholder="Enter Grand Total"
-                  value={formData.grandTotal || ""}
+                  value={(() => {
+                    const subTotal =
+                      (Number(formData.amount) || 0) -
+                      (Number(formData.discount) || 0);
+                    const tax =
+                      formData.taxAble === "Yes" ? subTotal * 0.15 : 0;
+                    const total = subTotal + tax;
+                    return isNaN(total) ? "" : total;
+                  })()}
                   onChange={(e) => handleChange("grandTotal", e.target.value)}
                   size="small"
                   sx={{
@@ -1658,46 +1806,105 @@ export default function GenericModal({
                   my: 2,
                 }}
               >
-                {selectedRow.items && selectedRow.items.length > 0 ? (
-                  <GenericTable
-                    columns={[
-                      { id: "itemName", label: "Item Name", width: "40%" },
-                      { id: "quantity", label: "Quantity", width: "20%" },
-                      { id: "price", label: "Price", width: "20%" },
-                      { id: "total", label: "Total", width: "20%" },
-                    ]}
-                    data={selectedRow.items}
-                    emptyMessage="No items found"
-                    onRowClick={(row) => console.log("row clicked", row)}
-                  />
-                ) : (
-                  <GenericTable
-                    columns={[
-                      { id: "voucher", label: "Voucher#", width: "5%" },
-                      { id: "type", label: "Type", width: "10%" },
-                      { id: "amount", label: "Amount", width: "13%" },
-                      { id: "entityType", label: "Entity Type", width: "10%" },
-                    ]}
-                    data={selectedRow.items || selectedRow.lines || []}
-                    emptyMessage="No income entries found"
-                    onRowClick={(row) => console.log("row clicked", row)}
-                  />
-                )}
+                {/* Get items from multiple possible sources - items, detailsData, or lines */}
+                {(() => {
+                  const itemsArray =
+                    selectedRow.items || selectedRow.lines || [];
+
+                  // If items is empty, try to extract from detailsData
+                  if (
+                    itemsArray.length === 0 &&
+                    selectedRow.detailsData &&
+                    typeof selectedRow.detailsData === "object"
+                  ) {
+                    const detailedItems = Object.values(
+                      selectedRow.detailsData,
+                    ).map((detail) => ({
+                      id: detail.id || detail.item_id || Date.now(),
+                      itemName: detail.item_name || "",
+                      quantity: Number(detail.qty) || 0,
+                      price: Number(detail.price) || 0,
+                      total: Number(detail.total) || 0,
+                    }));
+                    if (detailedItems.length > 0) {
+                      return (
+                        <GenericTable
+                          columns={[
+                            {
+                              id: "itemName",
+                              label: "Item Name",
+                              width: "40%",
+                            },
+                            { id: "quantity", label: "Quantity", width: "20%" },
+                            { id: "price", label: "Price", width: "20%" },
+                            { id: "total", label: "Total", width: "20%" },
+                          ]}
+                          data={detailedItems}
+                          emptyMessage="No items found"
+                          onRowClick={(row) => console.log("row clicked", row)}
+                        />
+                      );
+                    }
+                  }
+
+                  return itemsArray.length > 0 ? (
+                    <GenericTable
+                      columns={[
+                        { id: "itemName", label: "Item Name", width: "40%" },
+                        { id: "quantity", label: "Quantity", width: "20%" },
+                        { id: "price", label: "Price", width: "20%" },
+                        { id: "total", label: "Total", width: "20%" },
+                      ]}
+                      data={itemsArray}
+                      emptyMessage="No items found"
+                      onRowClick={(row) => console.log("row clicked", row)}
+                    />
+                  ) : (
+                    <Typography
+                      color="#999"
+                      fontStyle="italic"
+                      textAlign="center"
+                    >
+                      No income entries found
+                    </Typography>
+                  );
+                })()}
               </Paper>
               {(() => {
                 const itemsSum = (selectedRow.items || []).reduce(
-                  (sum, item) => sum + (item.total || 0),
+                  (sum, item) => sum + (Number(item?.total) || 0),
                   0,
                 );
-                const subTotal =
-                  selectedRow.subTotal || itemsSum || selectedRow.amount || 0;
-                const discount = selectedRow.discount || 0;
-                const taxAmount =
-                  selectedRow.taxAble === "Yes"
-                    ? Math.round(subTotal * 0.15)
-                    : 0;
-                const grandTotal =
-                  selectedRow.grandTotal || subTotal - discount + taxAmount;
+                // Use stored values when available (from backend), compute as fallback
+                const subTotalRaw =
+                  selectedRow.subTotal ??
+                  selectedRow.sub_total ??
+                  itemsSum ??
+                  selectedRow.amount ??
+                  0;
+                const subTotal = Number(subTotalRaw) || 0;
+
+                const discountRaw =
+                  selectedRow.discount ?? selectedRow.Discount ?? 0;
+                const discount = Number(discountRaw) || 0;
+
+                const taxableRaw =
+                  selectedRow.taxAble ?? selectedRow.taxable ?? "";
+                const isTaxable =
+                  taxableRaw === "Yes" ||
+                  String(taxableRaw).toUpperCase() === "YES" ||
+                  String(taxableRaw).toUpperCase() === "Y" ||
+                  taxableRaw === "1" ||
+                  taxableRaw === 1;
+
+                const taxAmount = isTaxable ? Math.round(subTotal * 0.15) : 0;
+
+                const grandTotalRaw =
+                  selectedRow.grandTotal ??
+                  selectedRow.grand_total ??
+                  subTotal - discount + taxAmount;
+                const grandTotal = Number(grandTotalRaw) || 0;
+
                 return (
                   <Box
                     sx={{
@@ -1709,16 +1916,25 @@ export default function GenericModal({
                     }}
                   >
                     <Typography fontWeight={600} color="#555">
-                      Sub Total: Rs. {subTotal}/-
+                      Sub Total: Rs. {subTotal.toLocaleString()}/-
                     </Typography>
                     <Typography fontWeight={600} color="#555">
-                      Discount (%): {discount}%
+                      Discount: Rs. {discount.toLocaleString()}/-
                     </Typography>
                     <Typography fontWeight={600} color="#555">
-                      Tax(15%): Rs. {taxAmount}/-
+                      Taxable: {isTaxable ? "Yes (15%)" : "No"}
                     </Typography>
-                    <Typography fontWeight={600} color="#555">
-                      Grand Total: Rs. {grandTotal}/-
+                    {isTaxable && (
+                      <Typography fontWeight={600} color="#555">
+                        Tax (15%): Rs. {taxAmount.toLocaleString()}/-
+                      </Typography>
+                    )}
+                    <Typography
+                      fontWeight={700}
+                      color="#1B0D3F"
+                      fontSize="1rem"
+                    >
+                      Grand Total: Rs. {grandTotal.toLocaleString()}/-
                     </Typography>
                   </Box>
                 );

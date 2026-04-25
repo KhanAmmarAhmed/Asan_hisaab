@@ -14,6 +14,7 @@ const GenericSelectField = ({
   sx = {},
   renderOption,
   placeholder,
+  freeSolo = false,
 }) => {
   const getLabel = (option) =>
     typeof option === "string" ? option : (option?.[optionLabel] ?? "");
@@ -21,7 +22,8 @@ const GenericSelectField = ({
   const selectedOption = useMemo(
     () =>
       options.find((opt) =>
-        typeof opt === "string" ? opt === value : opt?.[optionValue] === value,
+        // Use loose equality (==) so numeric IDs from API match string values in state
+        typeof opt === "string" ? opt === value : opt?.[optionValue] == value,
       ) || null,
     [options, optionValue, value],
   );
@@ -42,7 +44,7 @@ const GenericSelectField = ({
 
   return (
     <Autocomplete
-      freeSolo
+      freeSolo={freeSolo}
       options={options}
       getOptionLabel={getLabel}
       value={selectedOption}
@@ -62,9 +64,12 @@ const GenericSelectField = ({
       }}
       onInputChange={(event, newInputValue, reason) => {
         setInputValue(newInputValue);
-        // Avoid overriding selected values (often ids) with labels during reset.
-        if (reason === "reset") return;
-        onChange({ target: { value: newInputValue } });
+        // Only clear value when user explicitly clicks the X (clear) button.
+        // Do NOT clear on "reset" — MUI fires "reset" after a valid selection
+        // to update the input display, and clearing here would wipe the chosen value.
+        if (reason === "clear") {
+          onChange({ target: { value: "" } });
+        }
       }}
       size={size}
       fullWidth={fullWidth}
